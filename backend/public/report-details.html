@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Report Details</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="dashboard-container">
+    <aside class="sidebar">
+      <div class="sidebar-header">SafeVoice Admin</div>
+      <nav class="sidebar-nav">
+        <a href="dashboard.html" class="nav-link">Reports Dashboard</a>
+      </nav>
+      <div class="sidebar-footer">
+        <button onclick="logout()" class="btn btn-outline btn-block">Logout</button>
+      </div>
+    </aside>
+    
+    <main class="main-content">
+      <div style="margin-bottom: 2rem;">
+        <a href="dashboard.html" style="color: var(--text-light); text-decoration: none;">&larr; Back to Dashboard</a>
+      </div>
+
+      <div id="loading" style="text-align: center;">Loading details...</div>
+
+      <div id="detailsContent" class="hidden">
+        <div class="page-header">
+          <div>
+            <h1 id="trackingCode">SV-XXXX</h1>
+            <p id="dateReported" style="color: var(--text-light);"></p>
+          </div>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+             <select id="statusSelect" class="form-input" style="width: auto;">
+               <option value="Received">Received</option>
+               <option value="Assigned">Assigned</option>
+               <option value="In Review">In Review</option>
+               <option value="Action Taken">Action Taken</option>
+               <option value="Resolved">Resolved</option>
+             </select>
+             <button id="saveStatusBtn" class="btn">Update Status</button>
+          </div>
+        </div>
+
+        <div class="card" style="padding: 2rem;">
+          <div class="detail-grid">
+            <div class="detail-section">
+              <div class="detail-label">Type of Incident</div>
+              <div class="detail-value" id="reportType">Physical</div>
+            </div>
+            <div class="detail-section">
+              <div class="detail-label">Location</div>
+              <div class="detail-value" id="reportLocation">Nairobi</div>
+            </div>
+            <div class="detail-section">
+               <div class="detail-label">Current Status</div>
+               <div class="detail-value"><span id="currentStatusBadge" class="badge">Received</span></div>
+            </div>
+            <div class="detail-section">
+               <div class="detail-label">Attachments</div>
+               <div id="attachmentsContainer" class="attachments-grid">
+                  <!-- JS will populate -->
+                  <div style="color: #9ca3af; font-size: 0.9rem;">No attachments</div>
+               </div>
+            </div>
+          </div>
+
+          <div style="margin-top: 1rem;">
+            <div class="detail-label">Description</div>
+            <div id="reportDescription" style="background: #f9fafb; padding: 1.5rem; border-radius: 0.5rem; line-height: 1.6;">
+              
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="auth.js"></script>
+  <script src="report-details.js"></script>
+</body>
+</html>

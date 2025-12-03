@@ -1,0 +1,9 @@
+{
+  "name": "Copy of SafeVoice GBV App",
+  "description": "An anonymous reporting, tracking, and education platform for Gender-Based Violence support.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
