@@ -24,11 +24,11 @@ export enum GBVType {
 }
 
 export enum ReportStatus {
-  RECEIVED = 'submitted',
-  ASSIGNED = 'assigned',
-  IN_REVIEW = 'in_review',
-  ACTION_TAKEN = 'action_taken',
-  RESOLVED = 'resolved',
+  RECEIVED = 'RECEIVED',
+  ASSIGNED = 'ASSIGNED',
+  IN_REVIEW = 'IN_REVIEW',
+  ACTION_TAKEN = 'ACTION_TAKEN',
+  RESOLVED = 'RESOLVED',
 }
 
 export interface AppwriteConfig {
@@ -59,7 +59,7 @@ export interface Report {
   description: string;
   attachments: Attachment[];
   status: ReportStatus;
-  statusHistory: { status: ReportStatus; timestamp: string }[];
+  statusHistory: { status: ReportStatus; timestamp: string; note?: string }[];
   caseUpdates: CaseUpdate[];
   createdAt: string;
   anonymousUserId: string;

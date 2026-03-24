@@ -155,9 +155,46 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                 </div>
 
                 <div className="pt-8 border-t dark:border-gray-800">
+                    <h3 className="text-xs font-black text-gray-400 uppercase mb-4">Update Status</h3>
+                    <div className="flex gap-2 mb-4">
+                      <select 
+                        value={selectedReport.status} 
+                        onChange={async (e) => {
+                          const newStatus = e.target.value as ReportStatus;
+                          await BackendService.updateReportStatus(selectedReport.id, newStatus);
+                          setSelectedReport({...selectedReport, status: newStatus});
+                        }}
+                        className="flex-1 p-2 rounded-lg border border-gray-200 dark:bg-gray-800 text-sm"
+                      >
+                        {Object.values(ReportStatus).map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                    </div>
+
+                    <h3 className="text-xs font-black text-gray-400 uppercase mb-4">Add Case Update</h3>
+                    <div className="space-y-2 mb-8">
+                      <textarea 
+                        id="case-update-text"
+                        placeholder="Type update here..." 
+                        className="w-full p-3 rounded-xl border border-gray-200 dark:bg-gray-800 text-sm outline-none focus:ring-2 focus:ring-pink-500"
+                      />
+                      <button 
+                        onClick={async () => {
+                          const el = document.getElementById('case-update-text') as HTMLTextAreaElement;
+                          if (el.value.trim()) {
+                            await BackendService.addCaseUpdate(selectedReport.id, el.value, 'Admin');
+                            el.value = '';
+                            // Refresh will happen via subscription
+                          }
+                        }}
+                        className="w-full bg-pink-600 text-white py-2 rounded-xl font-bold text-sm"
+                      >
+                        Post Update
+                      </button>
+                    </div>
+
                     <h3 className="text-xs font-black text-gray-400 uppercase mb-4">Case Progression</h3>
                     <div className="space-y-4">
-                        {selectedReport.statusHistory.map((h, i) => (
+                        {(selectedReport.statusHistory || []).map((h, i) => (
                             <div key={i} className="flex gap-4">
                                 <div className="w-2 h-2 rounded-full bg-pink-500 mt-1.5 flex-shrink-0"></div>
                                 <div>

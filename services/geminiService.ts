@@ -7,7 +7,7 @@ export const GeminiService = {
   // Create a new chat session with SafeVoice context
   createChat(): Chat | null {
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       return ai.chats.create({
         model: 'gemini-3-flash-preview',
         config: {
@@ -48,7 +48,7 @@ export const GeminiService = {
 
   async classifyIncident(description: string): Promise<GBVType | string> {
      try {
-       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
        const response = await ai.models.generateContent({
          model: 'gemini-3-flash-preview',
          contents: `Classify the following incident into one of the 6 core GBV types: Physical Violence, Sexual Violence, Emotional/Psychological Abuse, Economic/Financial Abuse, Harmful Traditional Practices, or Sexual Harassment. Return ONLY the category name. Description: "${description}"`,
@@ -69,7 +69,7 @@ export const GeminiService = {
 
   async generateQuizForTopic(topic: string): Promise<QuizQuestion[]> {
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: `Generate 3 quiz questions about "${topic}" in the context of GBV/PSEA in Kakuma. Return JSON.`,
@@ -96,7 +96,7 @@ export const GeminiService = {
 
   async generateSafetyPlan(inputs: any): Promise<string> {
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
         contents: `Create a 5-step safety plan for a survivor in Kakuma camp: ${JSON.stringify(inputs)}. Mention the DRC 0800720414 and UNHCR 1517 hotlines.`,
@@ -109,9 +109,9 @@ export const GeminiService = {
 
   async findNearbyPlaces(lat: number, lng: number): Promise<SupportCentre[]> {
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash', 
+        model: 'gemini-3-flash-preview', 
         contents: "What GBV recovery centers or police stations are nearby in Kakuma?",
         config: {
           tools: [{ googleMaps: {} }],
