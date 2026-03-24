@@ -1,34 +1,78 @@
-import { GoogleGenAI, Type } from "@google/genai";
-import { QuizQuestion } from '../types';
 
-// Safely get API key, though in this demo environment it might be mocked or user provided
-const API_KEY = process.env.API_KEY || '';
-
-const ai = new GoogleGenAI({ apiKey: API_KEY });
+import { GoogleGenAI, Type, Chat } from "@google/genai";
+import { QuizQuestion, SupportCentre, GBVType } from '../types';
 
 export const GeminiService = {
   
-  async generateQuizForTopic(topic: string): Promise<QuizQuestion[]> {
-    if (!API_KEY) {
-      console.warn("No API Key available for Gemini. Returning mock quiz.");
-      return [
-        {
-          question: `What is a primary warning sign of ${topic}?`,
-          options: ["Supportive behavior", "Isolation from friends", "Open communication", "Respecting boundaries"],
-          correctIndex: 1
-        },
-        {
-          question: "Who can you contact for immediate help?",
-          options: ["A stranger", "The abuser", "Emergency Hotline 1195", "No one"],
-          correctIndex: 2
-        }
-      ];
-    }
-
+  // Create a new chat session with SafeVoice context
+  createChat(): Chat | null {
     try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      return ai.chats.create({
+        model: 'gemini-3-flash-preview',
+        config: {
+          tools: [{ googleSearch: {} }],
+          systemInstruction: `You are SafeVoice AI, a highly specialized expert ONLY in Gender-Based Violence (GBV) and PSEA (Prevention of Sexual Exploitation and Abuse), specifically for the Kakuma/Kalobeyei context. 
+          
+          CORE MANDATE:
+          1. REFUSE any non-GBV/PSEA questions. If asked about cooking, weather, sports, etc., pivot back to GBV.
+          2. Example refusal: "I am dedicated solely to GBV and PSEA support. I cannot help with that. Is there a safety concern I can assist with?"
+
+          KAKUMA/KALOBEYEI REFERRALS:
+          - DRC Toll-free: 0800720414
+          - UNHCR Helpline: 1517 (Also for PSEA/SEA reporting)
+          - National Hotline: 1195
+
+          PSEA CORE PRINCIPLES:
+          1. SEA is gross misconduct for staff.
+          2. NO sexual activity with anyone under 18.
+          3. NO exchange of money/aid/services for sex.
+          4. NO sexual relationships between aid workers and beneficiaries.
+          5. Mandatory reporting to 1517 or inspector@unhcr.org.
+
+          GBV KNOWLEDGE:
+          - Diversity & Inclusion: Respect for gender, ethnicity, and sexual orientation (LGBTIQ+).
+          - Rights: Safety is a human right. Services are FREE.
+          - Age of Consent: 18 years in Kenya.
+
+          SAFETY & CRISIS:
+          1. In immediate danger, lead with: "EMERGENCY: PLEASE CALL 1195, 1517, OR 0800720414 IMMEDIATELY."
+          2. Be trauma-informed and non-judgmental.`
+        }
+      });
+    } catch (e) {
+      console.error("Failed to create chat session", e);
+      return null;
+    }
+  },
+
+  async classifyIncident(description: string): Promise<GBVType | string> {
+     try {
+       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+       const response = await ai.models.generateContent({
+         model: 'gemini-3-flash-preview',
+         contents: `Classify the following incident into one of the 6 core GBV types: Physical Violence, Sexual Violence, Emotional/Psychological Abuse, Economic/Financial Abuse, Harmful Traditional Practices, or Sexual Harassment. Return ONLY the category name. Description: "${description}"`,
+       });
+       return response.text.trim() as GBVType;
+     } catch (e) {
+       return "Review Pending";
+     }
+  },
+
+  getOfflineResponse(userText: string): string {
+    const lower = userText.toLowerCase();
+    if (lower.includes('help') || lower.includes('danger') || lower.includes('psea') || lower.includes('abuse')) {
+        return "EMERGENCY: Please call UNHCR 1517 or DRC 0800720414 immediately. Help is free and confidential.";
+    }
+    return "I am a specialized AI for GBV and PSEA support in Kakuma. Are you safe right now?";
+  },
+
+  async generateQuizForTopic(topic: string): Promise<QuizQuestion[]> {
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: `Create a simple 3-question multiple choice quiz about "${topic}" related to Gender Based Violence awareness. Return JSON only.`,
+        model: 'gemini-3-flash-preview',
+        contents: `Generate 3 quiz questions about "${topic}" in the context of GBV/PSEA in Kakuma. Return JSON.`,
         config: {
           responseMimeType: "application/json",
           responseSchema: {
@@ -38,62 +82,66 @@ export const GeminiService = {
               properties: {
                 question: { type: Type.STRING },
                 options: { type: Type.ARRAY, items: { type: Type.STRING } },
-                correctIndex: { type: Type.INTEGER, description: "Zero-based index of the correct option" }
+                correctIndex: { type: Type.INTEGER }
               }
             }
           }
         }
       });
-      
-      const jsonText = response.text;
-      return JSON.parse(jsonText || '[]');
+      return JSON.parse(response.text.trim());
     } catch (error) {
-      console.error("Gemini Quiz Generation failed:", error);
       return [];
     }
   },
 
-  async analyzeReportSafety(description: string): Promise<string> {
-    if (!API_KEY) return "Unable to analyze safety (No API Key).";
-
+  async generateSafetyPlan(inputs: any): Promise<string> {
     try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: `Analyze this GBV report description for immediate risk level. Provide a one sentence safety advice. Description: "${description}"`,
+        model: 'gemini-3-flash-preview',
+        contents: `Create a 5-step safety plan for a survivor in Kakuma camp: ${JSON.stringify(inputs)}. Mention the DRC 0800720414 and UNHCR 1517 hotlines.`,
       });
-      return response.text || "Please seek immediate help if you are in danger.";
+      return response.text;
     } catch (error) {
-      console.error("Safety analysis failed", error);
-      return "Please ensure you are in a safe location.";
+      return "Call 1195/1517 and prepare a small bag with your ID and essential documents.";
     }
   },
 
-  async generateSafetyPlan(inputs: { livingSituation: string; hasChildren: boolean; accessToMoney: string; trustedContact: boolean }): Promise<string> {
-    if (!API_KEY) return "Safety Plan unavailable without API connection. Please call 1195.";
-
+  async findNearbyPlaces(lat: number, lng: number): Promise<SupportCentre[]> {
     try {
-      const prompt = `
-        You are a safety planning expert for victims of domestic violence. Create a personalized, practical, and safe 5-step safety plan for a victim in Kenya.
-        
-        User Context:
-        - Living Situation: ${inputs.livingSituation}
-        - Has Children: ${inputs.hasChildren ? 'Yes' : 'No'}
-        - Access to Money: ${inputs.accessToMoney}
-        - Has Trusted Contact: ${inputs.trustedContact ? 'Yes' : 'No'}
-
-        Output format: Markdown. Use bullet points. Be concise. Include specific Kenyan resources like 1195 or 999 where relevant.
-        Focus on immediate safety and preparation for emergency exit.
-      `;
-
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
+        model: 'gemini-2.5-flash', 
+        contents: "What GBV recovery centers or police stations are nearby in Kakuma?",
+        config: {
+          tools: [{ googleMaps: {} }],
+          toolConfig: {
+            retrievalConfig: {
+              latLng: {
+                latitude: lat,
+                longitude: lng
+              }
+            }
+          }
+        },
       });
-
-      return response.text || "Unable to generate plan.";
-    } catch (error) {
-      console.error("Safety plan generation failed", error);
-      return "Error generating plan. Please call the National Hotline 1195.";
+      const places: SupportCentre[] = [];
+      response.candidates?.[0]?.groundingMetadata?.groundingChunks?.forEach((chunk: any, i: number) => {
+        if (chunk.maps) {
+          places.push({ 
+            id: `gm_${i}`, 
+            name: chunk.maps.title, 
+            address: "Nearby Support", 
+            type: "Support", 
+            distance: "Calculated via GPS", 
+            mapUri: chunk.maps.uri 
+          });
+        }
+      });
+      return places;
+    } catch (e) {
+      console.error("Maps grounding failed", e);
+      return [];
     }
   }
 };

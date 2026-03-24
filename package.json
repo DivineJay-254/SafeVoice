@@ -1,5 +1,5 @@
 {
-  "name": "copy-of-safevoice-gbv-app",
+  "name": "safevoice-gbv-app_v5",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -12,7 +12,9 @@
     "react-dom": "^19.2.0",
     "@google/genai": "^1.30.0",
     "react": "^19.2.0",
-    "lucide-react": "^0.555.0"
+    "lucide-react": "^0.555.0",
+    "firebase": "^12.6.0",
+    "@supabase/supabase-js": "2"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

@@ -1,11 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GeminiService } from '../services/geminiService';
-import { Shield, Lock, ChevronRight, Loader2, Save } from 'lucide-react';
+import { Shield, Lock, ChevronRight, Loader2, Save, Phone } from 'lucide-react';
+import { Language } from '../types';
+import { getTranslation } from '../services/translations';
 
-export const SafetyPlanView: React.FC = () => {
+interface SafetyPlanViewProps {
+  lang: Language;
+}
+
+export const SafetyPlanView: React.FC<SafetyPlanViewProps> = ({ lang }) => {
+  const t = getTranslation(lang);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [plan, setPlan] = useState<string>('');
+  
+  // SOS Contact State
+  const [sosContact, setSosContact] = useState('');
+  const [contactSaved, setContactSaved] = useState(false);
   
   const [formData, setFormData] = useState({
     livingSituation: 'Living with abuser',
@@ -13,6 +24,17 @@ export const SafetyPlanView: React.FC = () => {
     accessToMoney: 'No access',
     trustedContact: false
   });
+
+  useEffect(() => {
+    const saved = localStorage.getItem('safevoice_sos_contact');
+    if (saved) setSosContact(saved);
+  }, []);
+
+  const handleSaveContact = () => {
+    localStorage.setItem('safevoice_sos_contact', sosContact);
+    setContactSaved(true);
+    setTimeout(() => setContactSaved(false), 2000);
+  };
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -25,16 +47,44 @@ export const SafetyPlanView: React.FC = () => {
   if (step === 1) {
     return (
       <div className="p-4 pb-20 animate-slide-up">
+        {/* Intro */}
         <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-2xl mb-6 flex items-start gap-3 border border-indigo-100 dark:border-indigo-800">
            <Shield className="w-6 h-6 text-indigo-600 dark:text-indigo-400 mt-1 flex-shrink-0" />
            <div>
-             <h2 className="font-bold text-indigo-800 dark:text-indigo-300">Safety Planner</h2>
+             <h2 className="font-bold text-indigo-800 dark:text-indigo-300">{t.plan_title}</h2>
              <p className="text-sm text-indigo-600 dark:text-indigo-400 mt-1">
-               Answer a few anonymous questions to get a personalized AI exit strategy.
+               {t.plan_intro}
              </p>
            </div>
         </div>
 
+        {/* SOS Contact Setup */}
+        <div className="mb-8 p-4 bg-red-50 dark:bg-red-900/10 rounded-2xl border border-red-100 dark:border-red-900/20">
+           <div className="flex items-center gap-2 mb-2">
+             <Phone className="w-5 h-5 text-red-600" />
+             <h3 className="font-bold text-red-700 dark:text-red-400">{t.sos_setup}</h3>
+           </div>
+           <p className="text-sm text-red-600/80 mb-3">{t.sos_desc}</p>
+           <div className="flex gap-2">
+             <input 
+               type="tel" 
+               placeholder="e.g. +2547..."
+               value={sosContact}
+               onChange={(e) => setSosContact(e.target.value)}
+               className="flex-1 p-2 rounded-lg border border-red-200 dark:border-red-800 bg-white dark:bg-gray-800 outline-none"
+             />
+             <button 
+               onClick={handleSaveContact}
+               className={`px-4 py-2 rounded-lg font-bold text-sm transition-colors ${
+                 contactSaved ? 'bg-green-600 text-white' : 'bg-red-600 text-white hover:bg-red-700'
+               }`}
+             >
+               {contactSaved ? 'Saved' : t.save_contact}
+             </button>
+           </div>
+        </div>
+
+        {/* Questionnaire */}
         <div className="space-y-6">
           <div>
             <label className="block text-sm font-medium mb-2">Living Situation</label>

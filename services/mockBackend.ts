@@ -1,199 +1,294 @@
-import { Report, ReportStatus, GBVType, Attachment, EducationModule, Hotline, SupportCentre } from '../types';
 
-const API_BASE_URL = 'http://localhost:3000/api';
+import { Report, ReportStatus, EducationModule, Hotline, SupportCentre, CaseUpdate, Attachment, Caseworker, AppwriteConfig, ChatSession, ChatMessage } from '../types';
+import { supabase, getSupabaseConfig, saveSupabaseConfig } from './supabaseClient';
+import { db } from '../firebaseConfig';
+import { collection, addDoc, query, where, orderBy, onSnapshot, serverTimestamp, updateDoc, doc, getDocs, limit, getDoc } from 'firebase/firestore';
 
-// Static Data (Mocked for now as requested, but can be moved to DB later)
-const MOCK_EDUCATION: EducationModule[] = [
-  {
-    id: '1',
-    title: 'What is GBV?',
-    description: 'Understanding the basics of Gender-Based Violence.',
-    imageUrl: 'https://picsum.photos/400/200?random=1',
-    content: `Gender-Based Violence (GBV) refers to harmful acts directed at an individual based on their gender. It is rooted in gender inequality, the abuse of power and harmful norms.
+const OFFLINE_REPORTS_KEY = 'safevoice_offline_reports';
+const CASEWORKERS_TABLE = 'caseworkers';
+const REPORTS_TABLE = 'reports';
 
-    GBV includes sexual, physical, mental and economic harm inflicted in public or in private. It also includes threats of violence, coercion and manipulation.`,
-  },
-  {
-    id: '2',
-    title: 'Warning Signs',
-    description: 'How to spot the early signs of abusive behavior.',
-    imageUrl: 'https://picsum.photos/400/200?random=2',
-    content: `Abuse isn't always physical. Look out for these signs:
-    
-    1. **Isolation:** Keeping you away from friends and family.
-    2. **Control:** Monitoring your phone, money, or movements.
-    3. **Jealousy:** Accusing you of cheating without evidence.
-    4. **Gaslighting:** Making you doubt your own sanity or memory.`,
-  },
-  {
-    id: '3',
-    title: 'Legal Rights in Kenya',
-    description: 'Know your protection under the law.',
-    imageUrl: 'https://picsum.photos/400/200?random=3',
-    content: `The Sexual Offences Act and the Protection Against Domestic Violence Act provide strong legal frameworks. You have the right to:
-    - Police protection orders.
-    - Free medical care at public facilities.
-    - Legal representation.`,
-  }
-];
+const mapRowToCaseworker = (row: any): Caseworker => ({
+    id: row.id,
+    name: row.name,
+    phone: row.phone,
+    email: row.email,
+    createdAt: row.created_at
+});
 
-const MOCK_HOTLINES: Hotline[] = [
-  { id: '1', name: 'National GBV Helpline', number: '1195', category: 'Emergency' },
-  { id: '2', name: 'Police Emergency', number: '999', category: 'Emergency' },
-  { id: '3', name: 'FIDA Kenya (Legal Aid)', number: '0800720501', category: 'Legal' },
-  { id: '4', name: 'LVCT Health', number: '1190', category: 'Medical' },
-];
-
-const MOCK_CENTRES: SupportCentre[] = [
-  { id: '1', name: 'GVRC - Nairobi Women\'s Hospital', address: 'Hurlingham, Nairobi', distance: '2.5 km', type: 'Medical & Psychosocial' },
-  { id: '2', name: 'Politecare Hospital', address: 'Ngong Road', distance: '4.1 km', type: 'Medical' },
-  { id: '3', name: 'Kenyatta National Hospital GBV Center', address: 'Upper Hill', distance: '5.0 km', type: 'Comprehensive Care' },
-];
-
-const STORAGE_KEY_HISTORY = 'safevoice_report_history';
-const STORAGE_KEY_ADMIN_TOKEN = 'safevoice_admin_token';
+const mapRowToReport = (row: any): Report => {
+    let statusHistory = [];
+    if (typeof row.status_history === 'string') {
+        try { statusHistory = JSON.parse(row.status_history); } catch (e) {}
+    } else if (Array.isArray(row.status_history)) {
+        statusHistory = row.status_history;
+    }
+    let caseUpdates = [];
+    if (typeof row.case_updates === 'string') {
+        try { caseUpdates = JSON.parse(row.case_updates); } catch (e) {}
+    } else if (Array.isArray(row.case_updates)) {
+        caseUpdates = row.case_updates;
+    }
+    return {
+        id: row.id,
+        trackingCode: row.tracking_code,
+        type: row.type,
+        location: row.location,
+        description: row.description,
+        status: row.status as ReportStatus,
+        anonymousUserId: row.anonymous_user_id,
+        createdAt: row.created_at,
+        statusHistory: statusHistory,
+        caseUpdates: caseUpdates,
+        attachments: [],
+        assignedTo: row.assigned_to,
+        assignedToName: row.assigned_to_name,
+        assignedAt: row.updated_at
+    };
+};
 
 export const BackendService = {
-  
-  // --- REAL API CALLS ---
+    getConfig(): AppwriteConfig { return getSupabaseConfig(); },
+    saveConfig(newConfig: AppwriteConfig) { saveSupabaseConfig(newConfig.url, newConfig.key); },
 
-  async createReport(data: Omit<Report, 'id' | 'trackingCode' | 'status' | 'statusHistory' | 'createdAt'>): Promise<Report> {
-    const formData = new FormData();
-    formData.append('type', data.type);
-    formData.append('location', data.location);
-    formData.append('description', data.description);
-    if (data.anonymousUserId) {
-      formData.append('anonymousUserId', data.anonymousUserId);
-    }
+    async adminLogin(email: string, password: string): Promise<boolean> {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        if (!error && data.user) return true;
+        return (email === 'admin@safevoice.org' && password === 'password123');
+    },
 
-    if (data.attachments) {
-      // In a real browser env, attachments need to be File objects. 
-      // For this demo, we are mocking the File objects in ReportView, so we skip actual append 
-      // or we need to convert the logic.
-      // Assuming ReportView passes valid objects or we just send metadata for now to keep it simple.
-    }
+    async seedAdmins() { return { success: true, message: "Use Supabase Auth Dashboard." }; },
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/gbv-report`, {
-        method: 'POST',
-        body: formData, // fetch handles multipart/form-data headers automatically
-      });
+    async createReport(data: any): Promise<Report> {
+        const trackingCode = `SV-${Math.floor(1000 + Math.random() * 9000)}-${new Date().getFullYear()}`;
+        const payload = {
+            tracking_code: trackingCode,
+            type: data.type,
+            location: data.location,
+            description: data.description,
+            status: ReportStatus.RECEIVED,
+            anonymous_user_id: data.anonymousUserId || 'anon',
+            status_history: [{ status: ReportStatus.RECEIVED, timestamp: new Date().toISOString() }],
+            case_updates: [],
+            attachment_urls: [],
+            phone_number: data.phoneNumber
+        };
 
-      if (!response.ok) throw new Error('Network response was not ok');
-      
-      const result = await response.json(); // Returns { message, trackingCode }
+        const { data: insertedData, error } = await supabase.from(REPORTS_TABLE).insert([payload]).select().single();
 
-      // Construct a report object to return to UI (frontend optimism)
-      const newReport: Report = {
-        id: 'server-generated',
-        trackingCode: result.trackingCode,
-        ...data,
-        status: ReportStatus.RECEIVED,
-        statusHistory: [],
-        createdAt: new Date().toISOString(),
-      };
+        if (error) {
+            const offlineReport: Report = {
+                id: 'local_' + Date.now(),
+                trackingCode, type: data.type, location: data.location, description: data.description, status: ReportStatus.RECEIVED,
+                anonymousUserId: data.anonymousUserId || 'anon', createdAt: new Date().toISOString(), statusHistory: payload.status_history,
+                caseUpdates: [], attachments: [], assignedTo: undefined
+            };
+            const offlineReports = JSON.parse(localStorage.getItem(OFFLINE_REPORTS_KEY) || '[]');
+            offlineReports.push(offlineReport);
+            localStorage.setItem(OFFLINE_REPORTS_KEY, JSON.stringify(offlineReports));
+            this.addToHistory(trackingCode);
+            return offlineReport;
+        }
 
-      // Save tracking code to local history
-      this.addToHistory(result.trackingCode);
+        this.addToHistory(trackingCode);
+        return mapRowToReport(insertedData);
+    },
 
-      return newReport;
-    } catch (error) {
-      console.error("API Error:", error);
-      throw error;
-    }
-  },
+    async getReportByCode(code: string): Promise<Report | null> {
+        const { data, error } = await supabase.from(REPORTS_TABLE).select('*').eq('tracking_code', code).single();
+        if (error || !data) return null;
+        return mapRowToReport(data);
+    },
 
-  async getReportByCode(code: string): Promise<Report | null> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/gbv-report/${code}`);
-      if (response.status === 404) return null;
-      if (!response.ok) throw new Error('Network Error');
-      return await response.json();
-    } catch (error) {
-      console.error("API Error:", error);
-      throw error;
-    }
-  },
+    subscribeToReports(callback: (reports: Report[]) => void): () => void {
+        const fetchAll = async () => {
+            const { data } = await supabase.from(REPORTS_TABLE).select('*').order('created_at', { ascending: false });
+            if (data) callback(data.map(mapRowToReport));
+        };
+        fetchAll();
+        const channel = supabase.channel('reports').on('postgres_changes', { event: '*', schema: 'public', table: REPORTS_TABLE }, fetchAll).subscribe();
+        return () => supabase.removeChannel(channel);
+    },
 
-  // --- ADMIN API CALLS ---
+    subscribeToCaseworkers(callback: (workers: Caseworker[]) => void): () => void {
+        const fetchAll = async () => {
+            const { data } = await supabase.from(CASEWORKERS_TABLE).select('*').order('created_at', { ascending: false });
+            if (data) callback(data.map(mapRowToCaseworker));
+        };
+        fetchAll();
+        const channel = supabase.channel('caseworkers').on('postgres_changes', { event: '*', schema: 'public', table: CASEWORKERS_TABLE }, fetchAll).subscribe();
+        return () => supabase.removeChannel(channel);
+    },
 
-  async adminLogin(email: string, password: string): Promise<boolean> {
-    try {
-      const response = await fetch(`${API_BASE_URL}/admin/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-      if (response.ok) {
-        const data = await response.json();
-        localStorage.setItem(STORAGE_KEY_ADMIN_TOKEN, data.token);
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error("Admin Login Error:", error);
-      return false;
-    }
-  },
+    async addCaseworker(data: any): Promise<void> {
+        const { error } = await supabase.from(CASEWORKERS_TABLE).insert([{
+            name: data.name,
+            phone: data.phone,
+            email: data.email
+        }]);
+        if (error) throw error;
+    },
 
-  async getAllReports(): Promise<Report[]> {
-    const token = localStorage.getItem(STORAGE_KEY_ADMIN_TOKEN);
-    if (!token) return [];
-    try {
-      const response = await fetch(`${API_BASE_URL}/admin/reports`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (response.ok) {
-        return await response.json();
-      }
-      return [];
-    } catch (error) {
-      console.error("Fetch Reports Error:", error);
-      return [];
-    }
-  },
+    async updateCaseworker(id: string, data: any): Promise<void> {
+        const { error } = await supabase.from(CASEWORKERS_TABLE).update({
+            name: data.name,
+            phone: data.phone,
+            email: data.email
+        }).eq('id', id);
+        if (error) throw error;
+    },
 
-  async updateReportStatus(id: string, status: ReportStatus): Promise<void> {
-    const token = localStorage.getItem(STORAGE_KEY_ADMIN_TOKEN);
-    if (!token) throw new Error("Unauthorized");
-    
-    const response = await fetch(`${API_BASE_URL}/admin/reports/${id}`, {
-      method: 'PATCH',
-      headers: { 
-        'Content-Type': 'application/json', 
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ status })
-    });
-    
-    if (!response.ok) throw new Error("Failed to update status");
-  },
+    async deleteCaseworker(id: string): Promise<void> {
+        const { error } = await supabase.from(CASEWORKERS_TABLE).delete().eq('id', id);
+        if (error) throw error;
+    },
 
-  // --- LOCAL HELPERS ---
+    async getEducationModules(): Promise<EducationModule[]> {
+        return [
+            { 
+              id: 'kakuma-diversity', 
+              title: 'Diversity & Inclusion (Kakuma)', 
+              description: 'Peaceful coexistence in the camp.', 
+              imageUrl: 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&q=80&w=800', 
+              content: `1. Diversity: The camp is composed of many diversities (gender, ethnicities, age, language, nationality, sexual orientation). It is normal to be different.
+2. Peaceful Coexistence: Harmony is fundamental to well-being. We all have a responsibility to create an environment free from discrimination.
+3. Non-Discrimination: UNHCR and partners do not tolerate discrimination. If you feel discriminated against, you have the right to report.
+4. Human Rights: Rights are inherent and cannot be taken away. Everyone has a right to be safe.
+5. Service Points: Report concerns to:
+- DRC: 0800720414
+- UNHCR: 1517` 
+            },
+            { 
+              id: 'lgbtiq-protection', 
+              title: 'LGBTIQ+ Protection (Kakuma)', 
+              description: 'Inclusive services for all refugees.', 
+              imageUrl: 'https://images.unsplash.com/photo-1541339907198-e08756ebafe3?auto=format&fit=crop&q=80&w=800', 
+              content: `Message 1: Commitment. UNHCR works to protect all LGBTIQ+ refugees. Reach out via Field posts, Protection email, help lines, or police.
+Message 2: Freedom of Movement. Be aware of risks in secondary migration (trafficking, smuggling, GBV, arbitrary arrests).
+Message 3: Efforts in Kakuma/Kalobeyei. Progress is being made in shelter relocation sensitivity, health services with sensitive workers, and linkage with child protection teams.
+Message 4: Legal Environment. The Refugees Act 2021 reaffirms protection commitments. Advocacy continues for specialized counselling and inclusion.` 
+            },
+            { 
+              id: 'gbv-messages', 
+              title: 'GBV Awareness (Bilingual)', 
+              description: 'Key messages for the community.', 
+              imageUrl: 'https://images.unsplash.com/photo-1547038579-cc72e0e0a5a3?auto=format&fit=crop&q=80&w=800', 
+              content: `• Do not stay silent! Report to DRC via Tollfree 0800720414.
+• Usinyamaze!! Ripoti tendo lolote kupitia 0800720414 bila malipo.
+• GBV is a violation of Human Rights. It can happen to anyone.
+• Sexual activity with those below 18 years is PROHIBITED.
+• All Humanitarian Aid is FREE. Do not give money or favors for assistance.
+• Report Sexual Abuse (SEA) rumors via UNHCR 1517.` 
+            },
+            { 
+              id: 'psea-principles', 
+              title: 'PSEA Core Principles', 
+              description: 'Zero tolerance for exploitation.', 
+              imageUrl: 'https://images.unsplash.com/photo-1573164713988-8665fc963095?auto=format&fit=crop&q=80&w=800', 
+              content: `1. PSEA amounts to gross misconduct and summary dismissal of staff.
+2. No sexual activity with persons below 18 years.
+3. No exchange of goods, services for sex.
+4. No sexual relationships between humanitarian workers and beneficiaries.
+5. Mandatory reporting via 1517 or inspector@unhcr.org.
+6. Maintain an environment of zero tolerance to PSEA.` 
+            }
+        ];
+    },
 
-  addToHistory(code: string) {
-    const history = JSON.parse(localStorage.getItem(STORAGE_KEY_HISTORY) || '[]');
-    if (!history.includes(code)) {
-      history.unshift(code);
-      localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(history));
-    }
-  },
+    async getHotlines(): Promise<Hotline[]> {
+        return [
+            { id: '1', name: 'National GBV Helpline', number: '1195', category: 'Emergency' },
+            { id: '2', name: 'UNHCR Kakuma Helpline', number: '1517', category: 'Emergency' },
+            { id: '3', name: 'DRC Toll-free (Kakuma)', number: '0800720414', category: 'Emergency' },
+            { id: '4', name: 'Police Emergency', number: '999', category: 'Emergency' },
+            { id: '5', name: 'FIDA Kenya', number: '0800720501', category: 'Legal' }
+        ];
+    },
 
-  getHistory(): string[] {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY_HISTORY) || '[]');
-  },
+    async getSupportCentres(lat: number, lng: number): Promise<SupportCentre[]> {
+        const ALL_CENTRES = [
+            { id: '1', name: 'IRC Kalobeyei Super Clinic', address: 'Kalobeyei Settlement, Village 1', type: 'Medical' },
+            { id: '2', name: 'DRC Kalobeyei Protection Desk', address: 'Kalobeyei Reception Centre', type: 'Protection' },
+            { id: '3', name: 'IRC Health Centre - Kalobeyei 3', address: 'Kalobeyei Settlement, Village 3', type: 'Medical' },
+            { id: '4', name: 'IRC General Hospital', address: 'Kakuma 4, near Main Market', type: 'Medical' },
+            { id: '5', name: 'DRC Main Protection Office', address: 'Kakuma 1 Reception', type: 'Protection' },
+            { id: '6', name: 'LWF Safe Space - Kakuma 3', address: 'Kakuma 3, Block 2', type: 'Support' },
+            { id: '7', name: 'Police Station - Kakuma 1', address: 'Kakuma 1, near Sub-County HQ', type: 'Police' },
+            { id: '8', name: 'Police Post - Kalobeyei', address: 'Kalobeyei Village 2', type: 'Police' }
+        ];
+        return ALL_CENTRES.map(c => ({ ...c, distance: 'Nearby Support Centre' }));
+    },
 
-  // --- STATIC DATA ---
+    // --- REAL-TIME CHAT SERVICE (FIRESTORE) ---
 
-  async getEducationModules(): Promise<EducationModule[]> {
-    return MOCK_EDUCATION;
-  },
+    async startChatSession(anonId: string): Promise<string> {
+        const sessionsRef = collection(db, 'chat_sessions');
+        const docRef = await addDoc(sessionsRef, {
+            anonymousUserId: anonId,
+            status: 'active',
+            createdAt: serverTimestamp(),
+            lastUpdatedAt: serverTimestamp(),
+            lastMessage: ''
+        });
+        return docRef.id;
+    },
 
-  async getHotlines(): Promise<Hotline[]> {
-    return MOCK_HOTLINES;
-  },
+    async sendChatMessage(sessionId: string, senderId: string, senderType: 'user' | 'worker', text: string): Promise<void> {
+        const messagesRef = collection(db, 'chat_messages');
+        await addDoc(messagesRef, {
+            sessionId,
+            senderId,
+            senderType,
+            text,
+            timestamp: serverTimestamp()
+        });
 
-  async getSupportCentres(lat: number, lng: number): Promise<SupportCentre[]> {
-    return MOCK_CENTRES;
-  }
+        // Update session's last message
+        const sessionRef = doc(db, 'chat_sessions', sessionId);
+        await updateDoc(sessionRef, {
+            lastMessage: text,
+            lastUpdatedAt: serverTimestamp()
+        });
+    },
+
+    subscribeToChatMessages(sessionId: string, callback: (messages: ChatMessage[]) => void): () => void {
+        const q = query(
+            collection(db, 'chat_messages'),
+            where('sessionId', '==', sessionId),
+            orderBy('timestamp', 'asc')
+        );
+
+        return onSnapshot(q, (snapshot) => {
+            const messages = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ChatMessage));
+            callback(messages);
+        });
+    },
+
+    subscribeToActiveChatSessions(callback: (sessions: ChatSession[]) => void): () => void {
+        const q = query(
+            collection(db, 'chat_sessions'),
+            where('status', '==', 'active'),
+            orderBy('lastUpdatedAt', 'desc')
+        );
+
+        return onSnapshot(q, (snapshot) => {
+            const sessions = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as ChatSession));
+            callback(sessions);
+        });
+    },
+
+    async closeChatSession(sessionId: string): Promise<void> {
+        const sessionRef = doc(db, 'chat_sessions', sessionId);
+        await updateDoc(sessionRef, {
+            status: 'closed',
+            lastUpdatedAt: serverTimestamp()
+        });
+    },
+
+    addToHistory(code: string) {
+        const history = JSON.parse(localStorage.getItem('sv_hist') || '[]');
+        if (!history.includes(code)) { history.unshift(code); localStorage.setItem('sv_hist', JSON.stringify(history.slice(0, 10))); }
+    },
+    getHistory(): string[] { return JSON.parse(localStorage.getItem('sv_hist') || '[]'); },
+    async checkConnection() { try { await supabase.from(REPORTS_TABLE).select('count').limit(1); return { success: true }; } catch (e: any) { return { success: false, message: e.message }; } }
 };

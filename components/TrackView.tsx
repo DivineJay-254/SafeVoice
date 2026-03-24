@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Report, ReportStatus } from '../types';
 import { BackendService } from '../services/mockBackend';
-import { Search, Clipboard, Loader2, CheckCircle2, Circle, History, ArrowRight } from 'lucide-react';
+import { Search, Clipboard, Loader2, CheckCircle2, Circle, History, ArrowRight, MessageSquare } from 'lucide-react';
 
 interface Props {
   initialCode?: string;
@@ -43,15 +43,16 @@ export const TrackView: React.FC<Props> = ({ initialCode = '' }) => {
     alert('Code copied to clipboard');
   };
 
+  // Complete status lifecycle
   const statusOrder = [
     ReportStatus.RECEIVED,
     ReportStatus.ASSIGNED,
     ReportStatus.IN_REVIEW,
+    ReportStatus.ACTION_TAKEN,
     ReportStatus.RESOLVED
   ];
 
   const getStatusIndex = (status: ReportStatus) => {
-    if (status === ReportStatus.ACTION_TAKEN) return 2;
     return statusOrder.indexOf(status);
   };
 
@@ -145,7 +146,7 @@ export const TrackView: React.FC<Props> = ({ initialCode = '' }) => {
                     {isCurrent && (
                       <p className="text-sm text-brand-500 mt-1">Current Status</p>
                     )}
-                    {isCompleted && (
+                    {isCompleted && isCurrent && (
                       <p className="text-xs text-gray-400 mt-1">
                          {new Date(report.createdAt).toLocaleDateString()}
                       </p>
@@ -155,6 +156,27 @@ export const TrackView: React.FC<Props> = ({ initialCode = '' }) => {
               );
             })}
           </div>
+          
+          {/* Case Updates Section */}
+          {report.caseUpdates && report.caseUpdates.length > 0 && (
+            <div className="mt-8">
+                <h4 className="flex items-center gap-2 font-bold mb-3 text-sm text-gray-700 dark:text-gray-300 border-t border-gray-100 dark:border-gray-700 pt-4">
+                    <MessageSquare className="w-4 h-4 text-brand-600" />
+                    Case Updates
+                </h4>
+                <div className="space-y-3">
+                    {report.caseUpdates.map(update => (
+                        <div key={update.id} className="bg-brand-50 dark:bg-brand-900/10 p-3 rounded-xl text-sm border-l-4 border-brand-500">
+                            <p className="text-gray-800 dark:text-gray-200 mb-2">{update.content}</p>
+                            <div className="flex justify-between items-center text-xs text-gray-400">
+                                <span className="font-semibold text-brand-700 dark:text-brand-400">{update.author}</span>
+                                <span>{new Date(update.timestamp).toLocaleString()}</span>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+          )}
           
           <div className="mt-8 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
             <h4 className="font-medium mb-2 text-sm text-gray-500">Submitted Description</h4>

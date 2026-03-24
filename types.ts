@@ -1,3 +1,4 @@
+
 export enum AppView {
   HOME = 'home',
   REPORT = 'report',
@@ -5,32 +6,48 @@ export enum AppView {
   EDUCATION = 'education',
   HOTLINES = 'hotlines',
   CHAT = 'chat',
-  SAFETY_PLAN = 'safety_plan', // New Feature
+  HUMAN_CHAT = 'human_chat',
+  SAFETY_PLAN = 'safety_plan',
   ADMIN_LOGIN = 'admin_login',
   ADMIN_DASHBOARD = 'admin_dashboard',
 }
 
+export type Language = 'en' | 'sw' | 'fr' | 'lg' | 'so' | 'am' | 'om' | 'rw' | 'ar' | 'rn' | 'ti';
+
 export enum GBVType {
   PHYSICAL = 'Physical Violence',
   SEXUAL = 'Sexual Violence',
-  EMOTIONAL = 'Emotional/Psychological',
-  ECONOMIC = 'Economic Abuse',
-  HARASSMENT = 'Sexual Harassment',
-  OTHER = 'Other',
+  EMOTIONAL = 'Emotional/Psychological Abuse',
+  ECONOMIC = 'Economic/Financial Abuse',
+  HARMFUL_PRACTICES = 'Harmful Traditional Practices (FGM/Marriage)',
+  HARASSMENT = 'Sexual Harassment & Stalking',
 }
 
 export enum ReportStatus {
-  RECEIVED = 'Received',
-  ASSIGNED = 'Assigned to Case Worker',
-  IN_REVIEW = 'In Review',
-  ACTION_TAKEN = 'Action Taken',
-  RESOLVED = 'Resolved',
+  RECEIVED = 'submitted',
+  ASSIGNED = 'assigned',
+  IN_REVIEW = 'in_review',
+  ACTION_TAKEN = 'action_taken',
+  RESOLVED = 'resolved',
+}
+
+export interface AppwriteConfig {
+  url: string;
+  key: string;
 }
 
 export interface Attachment {
   name: string;
   type: 'image' | 'video' | 'audio';
-  url: string; // Base64 or mock URL
+  url: string;
+  file?: File;
+}
+
+export interface CaseUpdate {
+  id: string;
+  content: string;
+  timestamp: string;
+  author: string;
 }
 
 export interface Report {
@@ -38,19 +55,33 @@ export interface Report {
   trackingCode: string;
   type: GBVType;
   location: string;
+  phoneNumber?: string;
   description: string;
   attachments: Attachment[];
   status: ReportStatus;
   statusHistory: { status: ReportStatus; timestamp: string }[];
+  caseUpdates: CaseUpdate[];
   createdAt: string;
   anonymousUserId: string;
+  
+  assignedTo?: string; 
+  assignedToName?: string; 
+  assignedAt?: string; 
+}
+
+export interface Caseworker {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+  createdAt: string;
 }
 
 export interface EducationModule {
   id: string;
   title: string;
   description: string;
-  content: string; // Markdown or text
+  content: string;
   imageUrl: string;
   quiz?: QuizQuestion[];
 }
@@ -75,4 +106,24 @@ export interface SupportCentre {
   address: string;
   distance: string;
   type: string;
+  mapUri?: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  sessionId: string;
+  senderId: string;
+  senderType: 'user' | 'worker';
+  text: string;
+  timestamp: any; // Firestore Timestamp
+}
+
+export interface ChatSession {
+  id: string;
+  anonymousUserId: string;
+  status: 'active' | 'closed';
+  createdAt: any;
+  lastMessage?: string;
+  lastUpdatedAt: any;
+  assignedTo?: string;
 }
