@@ -102,7 +102,7 @@ const App: React.FC = () => {
             <div className="px-4 py-3 flex justify-between items-center backdrop-blur-md">
               <div onClick={handleLogoTap} className="flex items-center gap-2 cursor-pointer select-none active:opacity-70 transition-opacity">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">SV</div>
-                <h1 className="font-bold text-lg tracking-tight text-gray-800 dark:text-white hidden sm:block">SafeVoice</h1>
+                <h1 className="font-bold text-lg tracking-tight text-gray-800 dark:text-white hidden sm:block">Juasafety yako</h1>
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={handleQuickExit} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center shadow-sm transition-transform active:scale-95">

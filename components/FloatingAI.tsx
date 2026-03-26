@@ -16,7 +16,7 @@ interface Message {
 export const FloatingAI: React.FC<{ lang: Language }> = ({ lang }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { id: '1', text: "Hello, I am the SafeVoice AI. I specialize exclusively in support for Gender-Based Violence (GBV). Ask me about safety, rights, or recovery knowledge.", sender: 'bot' }
+    { id: '1', text: "Hello, I am the Juasafety yako AI. I specialize exclusively in support for Gender-Based Violence (GBV). Ask me about safety, rights, or recovery knowledge.", sender: 'bot' }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -80,7 +80,7 @@ export const FloatingAI: React.FC<{ lang: Language }> = ({ lang }) => {
           <div className="bg-brand-600 p-4 flex justify-between items-center">
             <div className="flex items-center gap-2 text-white">
                <Bot className="w-5 h-5" />
-               <h3 className="font-bold text-sm">SafeVoice AI Support</h3>
+               <h3 className="font-bold text-sm">Juasafety yako AI Support</h3>
             </div>
             <button onClick={() => setIsOpen(false)} className="text-white/80 hover:text-white">
               <X className="w-6 h-6" />

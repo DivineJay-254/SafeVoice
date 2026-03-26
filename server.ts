@@ -74,7 +74,7 @@ const authenticateToken = async (req: any, res: any, next: any) => {
 // --- API ROUTES ---
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'Online', server: 'SafeVoice-Central', time: new Date() });
+  res.json({ status: 'Online', server: 'Juasafety yako', time: new Date() });
 });
 
 // Submit GBV Report

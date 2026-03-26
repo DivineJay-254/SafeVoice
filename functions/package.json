@@ -1,6 +1,6 @@
 {
   "name": "functions",
-  "description": "Cloud Functions for SafeVoice",
+  "description": "Cloud Functions for Juasafety yako",
   "scripts": {
     "serve": "firebase emulators:start --only functions",
     "shell": "firebase functions:shell",

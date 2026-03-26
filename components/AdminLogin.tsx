@@ -53,7 +53,7 @@ export const AdminLogin: React.FC<{ onLoginSuccess: () => void, onBack: () => vo
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Admin Access</h1>
           <div className="flex items-center gap-1 mt-2 text-xs text-brand-600 bg-brand-50 px-2 py-1 rounded-full">
              <ShieldCheck className="w-3 h-3" />
-             <span>SafeVoice Central Connected</span>
+             <span>Juasafety yako Connected</span>
           </div>
         </div>
 

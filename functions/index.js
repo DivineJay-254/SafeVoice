@@ -1,5 +1,5 @@
 /**
- * SafeVoice Cloud Functions
+ * Juasafety yako Cloud Functions
  * Deploy this file using `firebase deploy --only functions`
  */
 
@@ -65,7 +65,7 @@ exports.notifyCaseworkerAssignment = functions.firestore
 
         // 1. Send Email
         const mailOptions = {
-          from: `SafeVoice Admin <${GMAIL_EMAIL}>`,
+          from: `Juasafety yako Admin <${GMAIL_EMAIL}>`,
           to: workerEmail,
           subject: `[New Assignment] Case #${trackingCode}`,
           html: `
@@ -80,7 +80,7 @@ exports.notifyCaseworkerAssignment = functions.firestore
             </ul>
             <p>Please log in to the admin dashboard to review the evidence and take action.</p>
             <br/>
-            <p>SafeVoice Admin Team</p>
+            <p>Juasafety yako Admin Team</p>
           `,
         };
 
@@ -90,7 +90,7 @@ exports.notifyCaseworkerAssignment = functions.firestore
         // 2. Send SMS (Twilio) - Uncomment to enable
         /*
         await client.messages.create({
-           body: `SafeVoice Alert: You have been assigned Case #${trackingCode}. Type: ${newData.type}. Please check dashboard.`,
+           body: `Juasafety yako Alert: You have been assigned Case #${trackingCode}. Type: ${newData.type}. Please check dashboard.`,
            from: TWILIO_PHONE,
            to: workerPhone
         });

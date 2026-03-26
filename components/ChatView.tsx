@@ -16,7 +16,7 @@ export const ChatView: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: "Hello. I am SafeVoice AI. I am here to provide 24/7 anonymous support. How can I help you today?",
+      text: "Hello. I am Juasafety yako AI. I am here to provide 24/7 anonymous support. How can I help you today?",
       sender: 'bot',
       timestamp: new Date()
     }
