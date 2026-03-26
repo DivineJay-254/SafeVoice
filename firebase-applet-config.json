@@ -1,0 +1,11 @@
+{
+  "projectId": "safevoice-6df0c",
+  "appId": "1:1049963845626:web:40e7b3ed4d5799825e3643",
+  "apiKey": "AIzaSyAZVQ05Xa438wy8HuySmEJbah0xQIfOsgY",
+  "authDomain": "safevoice-6df0c.firebaseapp.com",
+  "databaseURL": "https://safevoice-6df0c-default-rtdb.firebaseio.com",
+  "storageBucket": "safevoice-6df0c.firebasestorage.app",
+  "messagingSenderId": "1049963845626",
+  "measurementId": "G-PH93FQ9TFS",
+  "firestoreDatabaseId": "(default)"
+}

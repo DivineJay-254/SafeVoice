@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { GBVType, Language } from '../types';
-import { BackendService } from '../services/mockBackend';
+import { DatabaseService } from '../services/databaseService';
 import { getTranslation } from '../services/translations';
 import { AlertCircle, Loader2, CheckCircle, Crosshair, ArrowRight, EyeOff, MapPin, Calendar, ListFilter, Map, Phone, Save, Trash2, Info, Satellite } from 'lucide-react';
 
@@ -25,6 +25,7 @@ export const ReportView: React.FC<ReportViewProps> = ({ onReportSubmitted, lang 
   const [trackingCode, setTrackingCode] = useState('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isIncognito, setIsIncognito] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [draftSavedFeedback, setDraftSavedFeedback] = useState(false);
 
   // Load draft on mount
@@ -51,18 +52,17 @@ export const ReportView: React.FC<ReportViewProps> = ({ onReportSubmitted, lang 
   };
 
   const handleClearDraft = () => {
-    if (confirm(t.clear_draft + "?")) {
-      localStorage.removeItem(DRAFT_KEY);
-      setLocation('');
-      setPhoneNumber('');
-      setIncidentDate('');
-      setType(GBVType.PHYSICAL);
-    }
+    localStorage.removeItem(DRAFT_KEY);
+    setLocation('');
+    setPhoneNumber('');
+    setIncidentDate('');
+    setType(GBVType.PHYSICAL);
+    setShowClearConfirm(false);
   };
 
   const handleGetGPS = () => {
     if (!navigator.geolocation) {
-        alert("Geolocation is not supported by your browser");
+        setErrorMsg("Geolocation is not supported by your browser");
         return;
     }
     setGettingLocation(true);
@@ -105,7 +105,7 @@ export const ReportView: React.FC<ReportViewProps> = ({ onReportSubmitted, lang 
 
     setIsSubmitting(true);
     try {
-      const report = await BackendService.createReport({
+      const report = await DatabaseService.createReport({
         type,
         location,
         phoneNumber,
@@ -156,7 +156,7 @@ export const ReportView: React.FC<ReportViewProps> = ({ onReportSubmitted, lang 
            </button>
            <button 
              type="button" 
-             onClick={handleClearDraft} 
+             onClick={() => setShowClearConfirm(true)} 
              className="p-2 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-500 hover:text-red-600 transition-all"
              title={t.clear_draft}
            >
@@ -164,6 +164,16 @@ export const ReportView: React.FC<ReportViewProps> = ({ onReportSubmitted, lang 
            </button>
         </div>
       </div>
+
+      {showClearConfirm && (
+        <div className="mb-6 bg-red-50 dark:bg-red-900/20 p-4 rounded-xl border border-red-100 dark:border-red-900/30 flex items-center justify-between animate-fade-in">
+          <p className="text-xs font-bold text-red-700 dark:text-red-400">Clear your report draft? This cannot be undone.</p>
+          <div className="flex gap-2">
+            <button onClick={() => setShowClearConfirm(false)} className="px-3 py-1 bg-white dark:bg-gray-800 text-xs font-bold border rounded">Cancel</button>
+            <button onClick={handleClearDraft} className="px-3 py-1 bg-red-600 text-white text-xs font-bold rounded">Clear</button>
+          </div>
+        </div>
+      )}
       
       <div className="bg-yellow-50 dark:bg-yellow-900/20 border-l-4 border-yellow-400 p-4 mb-4 rounded-r flex gap-3">
         <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0" />

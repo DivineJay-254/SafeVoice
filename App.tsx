@@ -11,8 +11,7 @@ import { AdminLogin } from './components/AdminLogin';
 import { AdminDashboard } from './components/AdminDashboard';
 import { PanicButton } from './components/PanicButton';
 import { FloatingAI } from './components/FloatingAI'; 
-import { ConfigModal } from './components/ConfigModal';
-import { BackendService } from './services/mockBackend';
+import { DatabaseService } from './services/databaseService';
 import { getTranslation, TRANSLATIONS } from './services/translations';
 import { Home, FilePlus, BookOpen, Phone, Bell, Moon, Sun, UserCircle, Shield, LogOut, Globe, WifiOff, Settings, Languages, GraduationCap, MessageCircleHeart } from 'lucide-react';
 
@@ -25,7 +24,6 @@ const App: React.FC = () => {
   const [notifications, setNotifications] = useState<string[]>([]);
   const [logoTaps, setLogoTaps] = useState(0);
   const [connectionError, setConnectionError] = useState<string | null>(null);
-  const [showConfig, setShowConfig] = useState(false);
 
   const t = getTranslation(lang);
 
@@ -33,11 +31,11 @@ const App: React.FC = () => {
     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
       setDarkMode(true);
     }
-    const history = BackendService.getHistory();
+    const history = DatabaseService.getHistory();
     if (history.length > 0) {
         setLastTrackingCode(history[0]);
     }
-    BackendService.checkConnection().then(result => {
+    DatabaseService.checkConnection().then(result => {
         if (!result.success) {
             setConnectionError(result.message || "Cannot connect to server.");
         }
@@ -98,7 +96,6 @@ const App: React.FC = () => {
             <FloatingAI lang={lang} /> 
           </>
         )}
-        {showConfig && <ConfigModal onClose={() => setShowConfig(false)} />}
 
         {view !== AppView.ADMIN_LOGIN && view !== AppView.ADMIN_DASHBOARD && view !== AppView.HUMAN_CHAT && (
           <header className="flex flex-col bg-white dark:bg-gray-900 sticky top-0 z-20 border-b border-gray-100 dark:border-gray-800">
@@ -144,7 +141,6 @@ const App: React.FC = () => {
           {connectionError && (
               <div className="bg-red-600 text-white text-xs p-2 text-center flex items-center justify-between font-bold sticky top-0 z-50">
                   <div className="flex items-center gap-2"><WifiOff className="w-4 h-4" /> {connectionError}</div>
-                  <button onClick={() => setShowConfig(true)} className="bg-white/20 hover:bg-white/30 px-2 py-0.5 rounded text-[10px] uppercase tracking-wider flex items-center gap-1"><Settings className="w-3 h-3" /> Config</button>
               </div>
           )}
 

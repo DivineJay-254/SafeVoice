@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { BackendService } from '../services/mockBackend';
+import { DatabaseService } from '../services/databaseService';
 import { ChatMessage, Language } from '../types';
 import { Send, X, Loader2, ShieldCheck, MessageSquare, AlertTriangle, Phone, ArrowLeft, Bot, MessageCircleHeart } from 'lucide-react';
 import { getTranslation } from '../services/translations';
@@ -22,7 +22,7 @@ export const HumanChatView: React.FC<Props> = ({ lang, onClose }) => {
 
   useEffect(() => {
     const startSession = async () => {
-      const id = await BackendService.startChatSession(userId);
+      const id = await DatabaseService.startChatSession(userId);
       setSessionId(id);
     };
     startSession();
@@ -31,7 +31,7 @@ export const HumanChatView: React.FC<Props> = ({ lang, onClose }) => {
   useEffect(() => {
     if (sessionId) {
       setLoading(false);
-      const unsubscribe = BackendService.subscribeToChatMessages(sessionId, (msgs) => {
+      const unsubscribe = DatabaseService.subscribeToChatMessages(sessionId, (msgs) => {
         setMessages(msgs);
         scrollToBottom();
       });
@@ -49,7 +49,7 @@ export const HumanChatView: React.FC<Props> = ({ lang, onClose }) => {
 
     setSending(true);
     try {
-      await BackendService.sendChatMessage(sessionId, userId, 'user', input);
+      await DatabaseService.sendChatMessage(sessionId, userId, 'user', input);
       setInput('');
     } catch (err) {
       console.error(err);
@@ -60,7 +60,7 @@ export const HumanChatView: React.FC<Props> = ({ lang, onClose }) => {
 
   const handleExit = async () => {
     if (sessionId) {
-      await BackendService.closeChatSession(sessionId);
+      await DatabaseService.closeChatSession(sessionId);
     }
     onClose();
   };

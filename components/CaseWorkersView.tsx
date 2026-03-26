@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Caseworker } from '../types';
-import { BackendService } from '../services/mockBackend';
+import { DatabaseService } from '../services/databaseService';
 import { Plus, User, Phone, Mail, Edit2, Trash2, X, Save, Loader2 } from 'lucide-react';
 
 export const CaseWorkersView: React.FC = () => {
@@ -8,13 +8,14 @@ export const CaseWorkersView: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingWorker, setEditingWorker] = useState<Caseworker | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
   
   // Form State
   const [formData, setFormData] = useState({ name: '', phone: '', email: '' });
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    const unsubscribe = BackendService.subscribeToCaseworkers((data) => {
+    const unsubscribe = DatabaseService.subscribeToCaseworkers((data) => {
         setWorkers(data);
         setLoading(false);
     });
@@ -37,22 +38,21 @@ export const CaseWorkersView: React.FC = () => {
     setSubmitting(true);
     try {
         if (editingWorker) {
-            await BackendService.updateCaseworker(editingWorker.id, formData);
+            await DatabaseService.updateCaseworker(editingWorker.id, formData);
         } else {
-            await BackendService.addCaseworker(formData);
+            await DatabaseService.addCaseworker(formData);
         }
         setIsModalOpen(false);
     } catch (e) {
-        alert("Operation failed.");
+        console.error("Operation failed.", e);
     } finally {
         setSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm("Are you sure you want to remove this case worker? This cannot be undone.")) {
-        await BackendService.deleteCaseworker(id);
-    }
+    await DatabaseService.deleteCaseworker(id);
+    setShowDeleteConfirm(null);
   };
 
   return (
@@ -98,11 +98,21 @@ export const CaseWorkersView: React.FC = () => {
                      <button onClick={() => handleOpenModal(worker)} className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg">
                        <Edit2 className="w-4 h-4" />
                      </button>
-                     <button onClick={() => handleDelete(worker.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">
+                     <button onClick={() => setShowDeleteConfirm(worker.id)} className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">
                        <Trash2 className="w-4 h-4" />
                      </button>
                    </div>
                  </div>
+
+                 {showDeleteConfirm === worker.id && (
+                    <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-100 dark:border-red-900/30 animate-fade-in">
+                      <p className="text-xs font-bold text-red-700 dark:text-red-400 mb-2">Remove this worker? This cannot be undone.</p>
+                      <div className="flex gap-2">
+                        <button onClick={() => setShowDeleteConfirm(null)} className="px-3 py-1 bg-white dark:bg-gray-800 text-xs font-bold border rounded">Cancel</button>
+                        <button onClick={() => handleDelete(worker.id)} className="px-3 py-1 bg-red-600 text-white text-xs font-bold rounded">Remove</button>
+                      </div>
+                    </div>
+                  )}
                  
                  <div className="space-y-2 mt-4 text-sm">
                    <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">

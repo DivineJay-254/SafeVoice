@@ -31,14 +31,10 @@ export enum ReportStatus {
   RESOLVED = 'RESOLVED',
 }
 
-export interface AppwriteConfig {
-  url: string;
-  key: string;
-}
-
 export interface Attachment {
+  id?: string;
   name: string;
-  type: 'image' | 'video' | 'audio';
+  type: string;
   url: string;
   file?: File;
 }
@@ -96,7 +92,7 @@ export interface Hotline {
   id: string;
   name: string;
   number: string;
-  category: 'Emergency' | 'Legal' | 'Medical' | 'Counseling';
+  category: string;
   location?: { lat: number; lng: number };
 }
 

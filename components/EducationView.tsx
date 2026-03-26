@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { EducationModule, QuizQuestion } from '../types';
-import { BackendService } from '../services/mockBackend';
+import { DatabaseService } from '../services/databaseService';
 import { GeminiService } from '../services/geminiService';
 import { ChevronRight, ArrowLeft, BookOpen, BrainCircuit, Loader2, Award, History, CheckCircle, Zap, Globe, ShieldCheck } from 'lucide-react';
 
@@ -15,7 +15,7 @@ export const EducationView: React.FC = () => {
   const [activeSubTab, setActiveSubTab] = useState<'modules' | 'progress'>('modules');
 
   useEffect(() => {
-    BackendService.getEducationModules().then(setModules);
+    DatabaseService.getEducationModules().then(setModules);
     const savedHistory = JSON.parse(localStorage.getItem('safevoice_quiz_history') || '[]');
     setTestHistory(savedHistory);
   }, []);

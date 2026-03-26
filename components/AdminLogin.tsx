@@ -1,57 +1,42 @@
 
 import React, { useState } from 'react';
-import { BackendService } from '../services/mockBackend';
-import { Loader2, Lock, ArrowLeft, Cloud, ShieldCheck, User } from 'lucide-react';
+import { auth } from '../firebaseConfig';
+import { signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { Loader2, Lock, ArrowLeft, ShieldCheck, LogIn } from 'lucide-react';
+import { DatabaseService } from '../services/databaseService';
 
 export const AdminLogin: React.FC<{ onLoginSuccess: () => void, onBack: () => void }> = ({ onLoginSuccess, onBack }) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [seeding, setSeeding] = useState(false);
-  
-  const DEMO_ACCOUNTS = [
-    { label: 'Admin', email: 'admin@safevoice.org' },
-    { label: 'Manager', email: 'manager@safevoice.org' },
-    { label: 'Supervisor', email: 'supervisor@safevoice.org' },
-    { label: 'Director', email: 'director@safevoice.org' },
-  ];
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleGoogleLogin = async () => {
     setLoading(true);
     setError('');
+    const provider = new GoogleAuthProvider();
     
     try {
-      // LOGIN FLOW
-      const success = await BackendService.adminLogin(email, password);
-      if (success) {
+      const result = await signInWithPopup(auth, provider);
+      
+      // Ensure user document exists (bootstraps if it's the first login)
+      await DatabaseService.ensureUserDocument();
+      
+      // Check if user has admin role
+      const role = await DatabaseService.getCurrentUserRole();
+      
+      if (role === 'admin') {
+        const token = await result.user.getIdToken();
+        localStorage.setItem('sv_admin_token', token);
         onLoginSuccess();
       } else {
-        setError("Authentication failed. Check credentials.");
+        setError("Access denied. You do not have administrative privileges.");
+        await auth.signOut();
       }
-    } catch (e) {
-      setError("Operation failed. Ensure you are connected to the network.");
+    } catch (e: any) {
+      console.error(e);
+      setError(e.message || "Authentication failed.");
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleSeedAdmins = async () => {
-    setSeeding(true);
-    try {
-        const result = await BackendService.seedAdmins();
-        alert(result.message);
-    } catch(e) {
-        alert("Failed to seed admins.");
-    } finally {
-        setSeeding(false);
-    }
-  };
-
-  const fillDemo = (demoEmail: string) => {
-      setEmail(demoEmail);
-      setPassword('password123');
   };
 
   return (
@@ -72,58 +57,30 @@ export const AdminLogin: React.FC<{ onLoginSuccess: () => void, onBack: () => vo
           </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
-            <label className="block text-sm font-bold text-gray-500 uppercase mb-2">Email Address</label>
-            <input 
-              type="email" 
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="admin@safevoice.org"
-              className="w-full p-4 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200 transition-all text-lg"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-bold text-gray-500 uppercase mb-2">Password</label>
-            <input 
-              type="password" 
-              placeholder="••••••••"
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-              className="w-full p-4 rounded-xl border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200 transition-all text-lg"
-              required
-              minLength={6}
-            />
-          </div>
+        <div className="space-y-6">
+          <p className="text-sm text-gray-500 text-center leading-relaxed">
+            Authorized personnel only. Please sign in with your official Google account to access the dashboard.
+          </p>
 
-          {error && <p className="text-red-500 text-base font-medium text-center bg-red-50 dark:bg-red-900/20 p-2 rounded-lg border border-red-100 dark:border-red-900">{error}</p>}
+          {error && <p className="text-red-500 text-sm font-medium text-center bg-red-50 dark:bg-red-900/20 p-3 rounded-lg border border-red-100 dark:border-red-900">{error}</p>}
 
           <button 
-            type="submit"
+            onClick={handleGoogleLogin}
             disabled={loading}
-            className="w-full bg-gray-900 dark:bg-white text-white dark:text-gray-900 py-4 rounded-xl font-bold text-lg shadow-lg hover:opacity-90 transition-opacity flex justify-center items-center disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-white dark:bg-gray-700 text-gray-900 dark:text-white py-4 rounded-xl font-bold text-lg shadow-md hover:shadow-lg border border-gray-200 dark:border-gray-600 transition-all flex justify-center items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading ? <Loader2 className="animate-spin w-6 h-6" /> : 'Sign In'}
+            {loading ? <Loader2 className="animate-spin w-6 h-6" /> : (
+              <>
+                <LogIn className="w-5 h-5" />
+                Sign in with Google
+              </>
+            )}
           </button>
-        </form>
+        </div>
         
-        {/* Quick Fill Demo Accounts */}
-        <div className="mt-6">
-            <p className="text-[10px] text-gray-400 text-center uppercase font-bold mb-3">Quick Fill Demo Accounts</p>
-            <div className="grid grid-cols-2 gap-2">
-                {DEMO_ACCOUNTS.map(acc => (
-                    <button
-                        key={acc.label}
-                        type="button"
-                        onClick={() => fillDemo(acc.email)}
-                        className="p-2 text-xs bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors flex items-center justify-center gap-1"
-                    >
-                        <User className="w-3 h-3" /> {acc.label}
-                    </button>
-                ))}
-            </div>
-            <p className="text-[10px] text-gray-400 text-center mt-2 italic">Password: password123</p>
+        <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-700 text-center">
+            <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Security Protocol</p>
+            <p className="text-[10px] text-gray-400 mt-1">All access attempts are logged and monitored.</p>
         </div>
       </div>
     </div>

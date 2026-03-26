@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Report, ReportStatus } from '../types';
-import { BackendService } from '../services/mockBackend';
+import { DatabaseService } from '../services/databaseService';
 import { Search, Clipboard, Loader2, CheckCircle2, Circle, History, ArrowRight, MessageSquare } from 'lucide-react';
 
 interface Props {
@@ -15,8 +15,10 @@ export const TrackView: React.FC<Props> = ({ initialCode = '' }) => {
   const [history, setHistory] = useState<string[]>([]);
   const [showHistory, setShowHistory] = useState(false);
 
+  const [copied, setCopied] = useState(false);
+
   useEffect(() => {
-    setHistory(BackendService.getHistory());
+    setHistory(DatabaseService.getHistory());
     if (initialCode) {
       handleTrack(initialCode);
     }
@@ -28,7 +30,7 @@ export const TrackView: React.FC<Props> = ({ initialCode = '' }) => {
     setSearched(true);
     setReport(null);
     try {
-      const result = await BackendService.getReportByCode(trackingCode);
+      const result = await DatabaseService.getReportByCode(trackingCode);
       setReport(result);
       if (trackingCode !== code) setCode(trackingCode);
     } catch (e) {
@@ -40,7 +42,8 @@ export const TrackView: React.FC<Props> = ({ initialCode = '' }) => {
 
   const copyCode = () => {
     navigator.clipboard.writeText(code);
-    alert('Code copied to clipboard');
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   // Complete status lifecycle
@@ -120,9 +123,12 @@ export const TrackView: React.FC<Props> = ({ initialCode = '' }) => {
                <p className="text-xs text-gray-500 uppercase tracking-wider">Tracking Code</p>
                <h2 className="text-xl font-mono font-bold text-brand-600">{report.trackingCode}</h2>
              </div>
-             <button onClick={copyCode} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full">
-               <Clipboard className="w-5 h-5 text-gray-400" />
-             </button>
+             <div className="flex items-center gap-2">
+               {copied && <span className="text-[10px] font-bold text-green-600 animate-fade-in">Copied!</span>}
+               <button onClick={copyCode} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors">
+                 {copied ? <CheckCircle2 className="w-5 h-5 text-green-600" /> : <Clipboard className="w-5 h-5 text-gray-400" />}
+               </button>
+             </div>
           </div>
 
           <div className="relative pl-4 space-y-8 before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-200 dark:before:bg-gray-700">

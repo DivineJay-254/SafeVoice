@@ -2,7 +2,7 @@
 import { Phone, MapPin, ExternalLink, Navigation, Loader2, Map as MapIcon, Compass, Crosshair, ArrowRight } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
 import { Hotline, SupportCentre } from '../types';
-import { BackendService } from '../services/mockBackend';
+import { DatabaseService } from '../services/databaseService';
 import { GeminiService } from '../services/geminiService';
 
 export const HotlinesView: React.FC = () => {
@@ -15,8 +15,8 @@ export const HotlinesView: React.FC = () => {
   const [isOnlineSearch, setIsOnlineSearch] = useState(false);
 
   useEffect(() => {
-    BackendService.getHotlines().then(setHotlines);
-    BackendService.getSupportCentres(0, 0).then(setCentres);
+    DatabaseService.getHotlines().then(setHotlines);
+    DatabaseService.getSupportCentres(0, 0).then(setCentres);
   }, []);
 
   const handleLocateAndFetch = () => {
@@ -49,7 +49,7 @@ export const HotlinesView: React.FC = () => {
            }
         }
 
-        const localResults = await BackendService.getSupportCentres(latitude, longitude);
+        const localResults = await DatabaseService.getSupportCentres(latitude, longitude);
         setCentres(localResults);
         setLoadingCentres(false);
       },

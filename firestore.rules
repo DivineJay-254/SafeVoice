@@ -1,0 +1,156 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: reports
+    // Fields: id, trackingCode, type, location, description, status, createdAt, anonymousUserId, attachments, statusHistory, caseUpdates
+    //
+    // Collection: caseworkers
+    // Fields: id, name, phone, email, createdAt
+    //
+    // Collection: chat_sessions
+    // Fields: id, anonymousUserId, status, createdAt, lastMessage, lastUpdatedAt, assignedTo
+    //
+    // Collection: chat_sessions/{sessionId}/messages
+    // Fields: id, sessionId, senderId, senderType, text, timestamp
+    //
+    // Collection: users
+    // Fields: id, email, role, name, createdAt
+    //
+    // ===============================================================
+
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isRecent(time) {
+      return time > request.time - duration.value(5, 'm') &&
+             time < request.time + duration.value(5, 'm');
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        ((exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin') ||
+         (request.auth.token.email == "divineakenak2@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidUrl(url) {
+      return url is string && (url.matches("^https://.*") || url.matches("^http://.*"));
+    }
+
+    function isValidDateString(dateStr) {
+      return dateStr is string && dateStr.matches("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.*Z?$");
+    }
+
+    // Domain Validators
+    function isValidReport(data) {
+      return hasOnlyAllowedFields(['trackingCode', 'type', 'location', 'description', 'phoneNumber', 'anonymousUserId', 'status', 'createdAt', 'statusHistory', 'caseUpdates', 'attachments', 'assignedTo', 'assignedToName', 'assignedAt']) &&
+             data.trackingCode is string && data.trackingCode.size() >= 5 && data.trackingCode.size() < 20 &&
+             data.type is string && data.type.size() > 0 && data.type.size() < 100 &&
+             data.location is string && data.location.size() > 0 && data.location.size() < 500 &&
+             data.description is string && data.description.size() > 0 && data.description.size() < 10000 &&
+             data.status in ['RECEIVED', 'ASSIGNED', 'IN_REVIEW', 'ACTION_TAKEN', 'RESOLVED'] &&
+             isValidDateString(data.createdAt) &&
+             data.anonymousUserId is string && data.anonymousUserId.size() > 0 && data.anonymousUserId.size() < 128 &&
+             data.statusHistory is list && data.statusHistory.size() < 50 &&
+             data.caseUpdates is list && data.caseUpdates.size() < 100 &&
+             data.attachments is list && data.attachments.size() < 10;
+    }
+
+    function isValidCaseworker(data) {
+      return hasOnlyAllowedFields(['name', 'email', 'phone', 'createdAt']) &&
+             data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.email is string && isValidEmail(data.email) &&
+             data.phone is string && data.phone.size() >= 5 && data.phone.size() < 25;
+    }
+
+    function isValidChatSession(data) {
+      return hasOnlyAllowedFields(['anonymousUserId', 'status', 'createdAt', 'lastMessage', 'lastUpdatedAt', 'assignedTo']) &&
+             data.anonymousUserId is string && data.anonymousUserId.size() > 0 && data.anonymousUserId.size() < 128 &&
+             data.status in ['active', 'closed'] &&
+             data.lastMessage is string && data.lastMessage.size() < 2000;
+    }
+
+    function isValidChatMessage(data) {
+      return hasOnlyAllowedFields(['sessionId', 'senderId', 'senderType', 'text', 'timestamp']) &&
+             data.sessionId is string && data.sessionId.size() > 0 &&
+             data.text is string && data.text.size() > 0 && data.text.size() < 5000 &&
+             data.senderType in ['user', 'worker'];
+    }
+
+    function isValidUser(data) {
+      return hasOnlyAllowedFields(['id', 'email', 'role', 'name', 'createdAt']) &&
+             data.email is string && isValidEmail(data.email) &&
+             data.role in ['admin', 'worker', 'user'] &&
+             (data.name == null || (data.name is string && data.name.size() < 100));
+    }
+
+    // Rules
+    
+    match /reports/{reportId} {
+      allow create: if isValidReport(request.resource.data);
+      allow get: if true;
+      allow list: if isAdmin() || (request.query.limit == 1);
+      allow delete: if isAdmin();
+      allow update: if isAdmin() || (isValidReport(request.resource.data) && request.resource.data.anonymousUserId == resource.data.anonymousUserId);
+    }
+
+    match /caseworkers/{workerId} {
+      allow read: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    match /chat_sessions/{sessionId} {
+      allow create: if isValidChatSession(request.resource.data) && isRecent(request.resource.data.createdAt);
+      allow read: if isAdmin() || (resource.data.anonymousUserId == request.auth.uid);
+      allow update: if isAdmin() || (isValidChatSession(request.resource.data) && isRecent(request.resource.data.lastUpdatedAt));
+      
+      match /messages/{messageId} {
+        allow read: if isAdmin() || (get(/databases/$(database)/documents/chat_sessions/$(sessionId)).data.anonymousUserId == request.auth.uid);
+        allow create: if isValidChatMessage(request.resource.data) && isRecent(request.resource.data.timestamp) && 
+                      (isAdmin() || (get(/databases/$(database)/documents/chat_sessions/$(sessionId)).data.anonymousUserId == request.auth.uid));
+      }
+    }
+
+    match /education_modules/{moduleId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /hotlines/{hotlineId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /support_centres/{centreId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated() && isValidUser(request.resource.data) && 
+                    ((isOwner(userId) && request.resource.data.role == 'user') || isAdmin());
+      allow update: if isAuthenticated() && isValidUser(request.resource.data) && 
+                    ((isOwner(userId) && request.resource.data.role == resource.data.role) || isAdmin());
+    }
+  }
+}

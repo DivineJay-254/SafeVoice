@@ -1,0 +1,188 @@
+{
+  "entities": {
+    "Report": {
+      "title": "GBV Report",
+      "description": "A report of Gender-Based Violence submitted by a user.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the report." },
+        "trackingCode": { "type": "string", "description": "Public tracking code for the user." },
+        "type": { "type": "string", "description": "Type of GBV reported." },
+        "location": { "type": "string", "description": "Location of the incident." },
+        "phoneNumber": { "type": "string", "description": "Optional contact number." },
+        "description": { "type": "string", "description": "Detailed description of the incident." },
+        "attachments": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "type": { "type": "string", "enum": ["image", "video", "audio"] },
+              "url": { "type": "string" }
+            }
+          }
+        },
+        "status": { "type": "string", "enum": ["RECEIVED", "ASSIGNED", "IN_REVIEW", "ACTION_TAKEN", "RESOLVED"] },
+        "statusHistory": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "status": { "type": "string" },
+              "timestamp": { "type": "string" },
+              "note": { "type": "string" }
+            }
+          }
+        },
+        "caseUpdates": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "content": { "type": "string" },
+              "timestamp": { "type": "string" },
+              "author": { "type": "string" }
+            }
+          }
+        },
+        "createdAt": { "type": "string" },
+        "anonymousUserId": { "type": "string" },
+        "assignedTo": { "type": "string" },
+        "assignedToName": { "type": "string" },
+        "assignedAt": { "type": "string" }
+      },
+      "required": ["id", "trackingCode", "type", "location", "description", "status", "createdAt", "anonymousUserId"]
+    },
+    "Caseworker": {
+      "title": "Caseworker",
+      "description": "An authorized advocate or caseworker.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "name", "phone", "email", "createdAt"]
+    },
+    "ChatSession": {
+      "title": "Chat Session",
+      "description": "A real-time chat session between a user and a caseworker.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "anonymousUserId": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "closed"] },
+        "createdAt": { "type": "string" },
+        "lastMessage": { "type": "string" },
+        "lastUpdatedAt": { "type": "string" },
+        "assignedTo": { "type": "string" }
+      },
+      "required": ["id", "anonymousUserId", "status", "createdAt"]
+    },
+    "ChatMessage": {
+      "title": "Chat Message",
+      "description": "A single message within a chat session.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "sessionId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderType": { "type": "string", "enum": ["user", "worker"] },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "sessionId", "senderId", "senderType", "text", "timestamp"]
+    },
+    "EducationModule": {
+      "title": "Education Module",
+      "description": "Educational content for users.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "content": { "type": "string" },
+        "imageUrl": { "type": "string" }
+      },
+      "required": ["id", "title", "description", "content", "imageUrl"]
+    },
+    "Hotline": {
+      "title": "Hotline",
+      "description": "Emergency contact number.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "number": { "type": "string" },
+        "category": { "type": "string" }
+      },
+      "required": ["id", "name", "number", "category"]
+    },
+    "SupportCentre": {
+      "title": "Support Centre",
+      "description": "Physical location for support and services.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "address": { "type": "string" },
+        "type": { "type": "string" },
+        "distance": { "type": "string" },
+        "lat": { "type": "number" },
+        "lng": { "type": "number" }
+      },
+      "required": ["id", "name", "address", "type"]
+    },
+    "User": {
+      "title": "User",
+      "description": "A user of the system, including admins and caseworkers.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "worker", "user"] },
+        "name": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "email", "role"]
+    }
+  },
+  "firestore": {
+    "/reports/{reportId}": {
+      "schema": "Report",
+      "description": "Collection of GBV reports."
+    },
+    "/caseworkers/{workerId}": {
+      "schema": "Caseworker",
+      "description": "Collection of authorized caseworkers."
+    },
+    "/chat_sessions/{sessionId}": {
+      "schema": "ChatSession",
+      "description": "Collection of active and closed chat sessions."
+    },
+    "/chat_sessions/{sessionId}/messages/{messageId}": {
+      "schema": "ChatMessage",
+      "description": "Subcollection of messages for a specific chat session."
+    },
+    "/education_modules/{moduleId}": {
+      "schema": "EducationModule",
+      "description": "Collection of educational modules."
+    },
+    "/hotlines/{hotlineId}": {
+      "schema": "Hotline",
+      "description": "Collection of emergency hotlines."
+    },
+    "/support_centres/{centreId}": {
+      "schema": "SupportCentre",
+      "description": "Collection of physical support centres."
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Collection of user profiles and roles."
+    }
+  }
+}

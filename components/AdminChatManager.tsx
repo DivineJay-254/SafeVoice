@@ -1,8 +1,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { BackendService } from '../services/mockBackend';
+import { DatabaseService } from '../services/databaseService';
 import { ChatSession, ChatMessage } from '../types';
 import { MessageSquare, User, Clock, Send, Loader2, CheckCircle, XCircle } from 'lucide-react';
+
+import { auth } from '../firebaseConfig';
 
 export const AdminChatManager: React.FC = () => {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
@@ -10,16 +12,17 @@ export const AdminChatManager: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
+  const [showCloseConfirm, setShowCloseConfirm] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const unsubscribe = BackendService.subscribeToActiveChatSessions(setSessions);
+    const unsubscribe = DatabaseService.subscribeToActiveChatSessions(setSessions);
     return () => unsubscribe();
   }, []);
 
   useEffect(() => {
     if (selectedSession) {
-      const unsubscribe = BackendService.subscribeToChatMessages(selectedSession.id, setMessages);
+      const unsubscribe = DatabaseService.subscribeToChatMessages(selectedSession.id, setMessages);
       return () => unsubscribe();
     }
   }, [selectedSession]);
@@ -30,11 +33,11 @@ export const AdminChatManager: React.FC = () => {
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || !selectedSession || sending) return;
+    if (!input.trim() || !selectedSession || sending || !auth.currentUser) return;
 
     setSending(true);
     try {
-      await BackendService.sendChatMessage(selectedSession.id, 'admin_1', 'worker', input);
+      await DatabaseService.sendChatMessage(selectedSession.id, auth.currentUser.uid, 'worker', input);
       setInput('');
     } catch (err) {
       console.error(err);
@@ -44,10 +47,9 @@ export const AdminChatManager: React.FC = () => {
   };
 
   const handleCloseChat = async (id: string) => {
-    if (confirm("Close this chat session?")) {
-      await BackendService.closeChatSession(id);
-      if (selectedSession?.id === id) setSelectedSession(null);
-    }
+    await DatabaseService.closeChatSession(id);
+    if (selectedSession?.id === id) setSelectedSession(null);
+    setShowCloseConfirm(null);
   };
 
   return (
@@ -97,12 +99,22 @@ export const AdminChatManager: React.FC = () => {
                 </div>
               </div>
               <button 
-                onClick={() => handleCloseChat(selectedSession.id)}
+                onClick={() => setShowCloseConfirm(selectedSession.id)}
                 className="text-xs font-bold text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg border border-red-100 transition-all"
               >
                 End Session
               </button>
             </header>
+
+            {showCloseConfirm && (
+              <div className="bg-red-50 dark:bg-red-900/20 p-4 border-b border-red-100 dark:border-red-900/30 flex items-center justify-between animate-fade-in">
+                <p className="text-xs font-bold text-red-700 dark:text-red-400">Are you sure you want to end this session? This will archive the chat.</p>
+                <div className="flex gap-2">
+                  <button onClick={() => setShowCloseConfirm(null)} className="px-3 py-1 rounded bg-white dark:bg-gray-800 text-xs font-bold border">Cancel</button>
+                  <button onClick={() => handleCloseChat(showCloseConfirm)} className="px-3 py-1 rounded bg-red-600 text-white text-xs font-bold">End Now</button>
+                </div>
+              </div>
+            )}
 
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               {messages.map(msg => (

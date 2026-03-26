@@ -1,1 +1,0 @@
-// Supabase configuration removed (migrated to Appwrite)

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Report, ReportStatus, Caseworker, GBVType } from '../types';
-import { BackendService } from '../services/mockBackend';
+import { DatabaseService } from '../services/databaseService';
 import { CaseWorkersView } from './CaseWorkersView';
 import { AdminChatManager } from './AdminChatManager';
 import { 
@@ -19,9 +19,25 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
   const [activeTab, setActiveTab] = useState<'dashboard' | 'caseworkers' | 'chats'>('dashboard');
 
   useEffect(() => {
-    const unsubscribe = BackendService.subscribeToReports(setReports);
-    setLoading(false);
-    return () => unsubscribe();
+    const checkAdmin = async () => {
+      const role = await DatabaseService.getCurrentUserRole();
+      if (role !== 'admin') {
+        onLogout();
+        return;
+      }
+      const unsubscribe = DatabaseService.subscribeToReports(setReports);
+      setLoading(false);
+      return unsubscribe;
+    };
+
+    let unsubscribe: (() => void) | undefined;
+    checkAdmin().then(unsub => {
+      if (unsub) unsubscribe = unsub;
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
   }, []);
 
   const getStatusColor = (status: ReportStatus) => {
@@ -161,7 +177,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                         value={selectedReport.status} 
                         onChange={async (e) => {
                           const newStatus = e.target.value as ReportStatus;
-                          await BackendService.updateReportStatus(selectedReport.id, newStatus);
+                          await DatabaseService.updateReportStatus(selectedReport.id, newStatus);
                           setSelectedReport({...selectedReport, status: newStatus});
                         }}
                         className="flex-1 p-2 rounded-lg border border-gray-200 dark:bg-gray-800 text-sm"
@@ -181,7 +197,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
                         onClick={async () => {
                           const el = document.getElementById('case-update-text') as HTMLTextAreaElement;
                           if (el.value.trim()) {
-                            await BackendService.addCaseUpdate(selectedReport.id, el.value, 'Admin');
+                            await DatabaseService.addCaseUpdate(selectedReport.id, el.value, 'Admin');
                             el.value = '';
                             // Refresh will happen via subscription
                           }
