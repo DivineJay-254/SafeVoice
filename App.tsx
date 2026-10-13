@@ -13,10 +13,38 @@ import { PanicButton } from './components/PanicButton';
 import { FloatingAI } from './components/FloatingAI'; 
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { useOnlineStatus } from './components/useOnlineStatus';
+import { CamouflageView } from './components/CamouflageView';
+import { PepEmergencyAssistant } from './components/PepEmergencyAssistant';
 import { DatabaseService } from './services/databaseService';
 import { CacheService } from './services/cacheService';
 import { getTranslation, TRANSLATIONS } from './services/translations';
-import { Home, FilePlus, BookOpen, Phone, Bell, Moon, Sun, UserCircle, Shield, LogOut, Globe, WifiOff, Settings, Languages, GraduationCap, MessageCircleHeart, RefreshCw, CheckCircle2, HardDriveDownload } from 'lucide-react';
+import { 
+  Home, 
+  FilePlus, 
+  BookOpen, 
+  Phone, 
+  Bell, 
+  Moon, 
+  Sun, 
+  UserCircle, 
+  Shield, 
+  LogOut, 
+  Globe, 
+  WifiOff, 
+  Settings, 
+  Languages, 
+  GraduationCap, 
+  MessageCircleHeart, 
+  RefreshCw, 
+  CheckCircle2, 
+  HardDriveDownload,
+  Calculator,
+  EyeOff,
+  Clock,
+  HeartPulse,
+  Sparkles,
+  ShieldCheck
+} from 'lucide-react';
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(AppView.HOME);
@@ -79,7 +107,39 @@ const App: React.FC = () => {
     }
   }, [darkMode]);
 
+  const [stealthAutoClear, setStealthAutoClear] = useState<boolean>(() => {
+    return localStorage.getItem('juasafety_stealth_autoclear') === 'true';
+  });
+  const [showSafetySettings, setShowSafetySettings] = useState(false);
+
+  // Stealth auto-clear on minimize / tab switch
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && stealthAutoClear) {
+        localStorage.removeItem('juasafety_report_draft');
+        localStorage.removeItem('juasafety_yako_report_history');
+        sessionStorage.clear();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [stealthAutoClear]);
+
+  const toggleStealthAutoClear = () => {
+    const nextVal = !stealthAutoClear;
+    setStealthAutoClear(nextVal);
+    localStorage.setItem('juasafety_stealth_autoclear', String(nextVal));
+    if (nextVal) {
+      setNotifications(prev => [...prev, "Stealth Auto-Clear enabled: drafts and history clear on exit or minimize"]);
+    }
+  };
+
   const handleQuickExit = () => {
+    if (stealthAutoClear) {
+      localStorage.removeItem('juasafety_report_draft');
+      localStorage.removeItem('juasafety_yako_report_history');
+      sessionStorage.clear();
+    }
     window.location.replace("https://www.google.com/search?q=weather+today");
   };
 
@@ -116,6 +176,17 @@ const App: React.FC = () => {
 
   const isAdminView = view === AppView.ADMIN_DASHBOARD;
 
+  // Discreet Camouflage Full-screen skin
+  if (view === AppView.CAMOUFLAGE) {
+    return (
+      <div className="flex justify-center min-h-screen bg-slate-900">
+        <div className="w-full max-w-md h-[100dvh] relative shadow-2xl overflow-hidden flex flex-col">
+          <CamouflageView onUnlock={() => setView(AppView.HOME)} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex justify-center min-h-screen bg-gray-200 dark:bg-black">
       <div className={`w-full ${isAdminView ? 'max-w-none' : 'max-w-md'} bg-white dark:bg-gray-900 h-[100dvh] relative shadow-2xl overflow-hidden flex flex-col transition-all duration-300`}>
@@ -133,9 +204,31 @@ const App: React.FC = () => {
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">JY</div>
                 <h1 className="font-bold text-lg tracking-tight text-gray-800 dark:text-white hidden sm:block">Juasafety Yako</h1>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
+                {/* Camouflage / Disguise Button */}
+                <button 
+                  onClick={() => setView(AppView.CAMOUFLAGE)} 
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1.5 rounded-full text-xs font-bold flex items-center shadow-sm transition-transform active:scale-95"
+                  title="Switch to calculator disguise"
+                >
+                  <Calculator className="w-3.5 h-3.5 mr-1 text-slate-300" /> Disguise
+                </button>
+
+                {/* Stealth Safety Settings */}
+                <button
+                  onClick={() => setShowSafetySettings(true)}
+                  className={`p-1.5 rounded-full transition-colors ${
+                    stealthAutoClear 
+                      ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-200' 
+                      : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`}
+                  title="Discreet Safety & Stealth Settings"
+                >
+                  <EyeOff className="w-4 h-4" />
+                </button>
+
                 <PWAInstallButton />
-                <button onClick={handleQuickExit} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center shadow-sm transition-transform active:scale-95">
+                <button onClick={handleQuickExit} className="bg-red-600 hover:bg-red-700 text-white px-2.5 py-1.5 rounded-full text-xs font-bold flex items-center shadow-sm transition-transform active:scale-95">
                   <LogOut className="w-3 h-3 mr-1" /> {t.quick_exit}
                 </button>
                 <button onClick={() => setDarkMode(!darkMode)} className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
@@ -218,6 +311,25 @@ const App: React.FC = () => {
                  </button>
                </div>
 
+               {/* 🚨 Emergency 72-Hour PEP Golden Window Assistant Widget */}
+               <div className="mb-4 bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 text-white p-4 rounded-2xl shadow-lg shadow-rose-600/30 flex items-center justify-between">
+                 <div className="space-y-1 pr-3">
+                   <div className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider bg-white/20 w-fit px-2.5 py-0.5 rounded-full">
+                     <Clock className="w-3 h-3 animate-pulse" /> 72-Hour Medical Golden Window
+                   </div>
+                   <h3 className="font-black text-sm">Urgent Sexual Assault Care</h3>
+                   <p className="text-[11px] text-rose-100 leading-tight">
+                     PEP prevents HIV if taken within 72h. Countdown timer, clinical guidance & direct triage line.
+                   </p>
+                 </div>
+                 <button
+                   onClick={() => setView(AppView.PEP_EMERGENCY)}
+                   className="bg-white text-rose-700 hover:bg-rose-50 text-xs font-black uppercase tracking-wider px-3.5 py-2 rounded-xl shadow-md flex-shrink-0 active:scale-95 transition"
+                 >
+                   I Need Care
+                 </button>
+               </div>
+
                <div className="grid grid-cols-2 gap-4">
                  <button onClick={() => setView(AppView.REPORT)} className="col-span-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white p-6 rounded-2xl shadow-lg shadow-brand-500/30 text-left hover:scale-[1.02] transition-transform active:scale-95">
                    <FilePlus className="w-8 h-8 mb-4 opacity-80" />
@@ -274,10 +386,91 @@ const App: React.FC = () => {
           {view === AppView.EDUCATION && <EducationView />}
           {view === AppView.HOTLINES && <HotlinesView />}
           {view === AppView.SAFETY_PLAN && <SafetyPlanView lang={lang} />}
+          {view === AppView.PEP_EMERGENCY && (
+            <PepEmergencyAssistant 
+              onBack={() => setView(AppView.HOME)} 
+              onNavigateToCentres={() => setView(AppView.HOTLINES)} 
+            />
+          )}
           {view === AppView.HUMAN_CHAT && <HumanChatView lang={lang} onClose={() => setView(AppView.HOME)} />}
           {view === AppView.ADMIN_LOGIN && <AdminLogin onLoginSuccess={() => setView(AppView.ADMIN_DASHBOARD)} onBack={() => setView(AppView.HOME)} />}
           {view === AppView.ADMIN_DASHBOARD && <AdminDashboard onLogout={() => setView(AppView.HOME)} />}
         </main>
+
+        {/* Discreet Stealth Safety Settings Modal */}
+        {showSafetySettings && (
+          <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-fade-in">
+            <div className="bg-white dark:bg-gray-800 rounded-3xl p-5 max-w-sm w-full shadow-2xl border border-gray-100 dark:border-gray-700 space-y-4">
+              <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-700 pb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold">
+                    <EyeOff className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm text-gray-900 dark:text-white">Discreet Safety Controls</h3>
+                    <p className="text-[10px] text-gray-400">Survivor privacy & device security</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowSafetySettings(false)}
+                  className="text-gray-400 hover:text-gray-600 text-xs font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                {/* Stealth Auto-Clear Switch */}
+                <div className="p-3 bg-gray-50 dark:bg-gray-700/60 rounded-2xl border border-gray-200 dark:border-gray-700 flex items-start justify-between gap-3">
+                  <div>
+                    <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-amber-600" /> Stealth Auto-Clear on Exit
+                    </h4>
+                    <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                      Wipes local search history, draft inputs, and cached incident notes when Quick Exit is clicked or when minimizing the app.
+                    </p>
+                  </div>
+                  <button
+                    onClick={toggleStealthAutoClear}
+                    className={`w-11 h-6 rounded-full transition-colors relative flex-shrink-0 mt-1 ${
+                      stealthAutoClear ? 'bg-amber-600' : 'bg-gray-300 dark:bg-gray-600'
+                    }`}
+                  >
+                    <span className={`block w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
+                      stealthAutoClear ? 'translate-x-6' : 'translate-x-1'
+                    }`} />
+                  </button>
+                </div>
+
+                {/* Camouflage Mode Shortcut */}
+                <div className="p-3 bg-gray-50 dark:bg-gray-700/60 rounded-2xl border border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                  <div>
+                    <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                      <Calculator className="w-3.5 h-3.5 text-indigo-600" /> Camouflage Calculator Skin
+                    </h4>
+                    <p className="text-[10px] text-gray-400 mt-0.5">Turns app into working calculator. Unlock: 1195=</p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setShowSafetySettings(false);
+                      setView(AppView.CAMOUFLAGE);
+                    }}
+                    className="bg-indigo-600 text-white text-[10px] font-bold px-3 py-1.5 rounded-xl flex-shrink-0 shadow-sm"
+                  >
+                    Enter Skin
+                  </button>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowSafetySettings(false)}
+                className="w-full py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-xl font-bold text-xs"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
 
         {view !== AppView.ADMIN_LOGIN && view !== AppView.ADMIN_DASHBOARD && view !== AppView.HUMAN_CHAT && (
           <nav className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 flex justify-around px-2 pb-safe absolute bottom-0 w-full z-10">

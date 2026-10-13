@@ -41,10 +41,72 @@ import {
   ShieldAlert,
   Lock,
   Eye,
-  Info
+  Info,
+  Download,
+  Share2,
+  FileCheck
 } from 'lucide-react';
 
-type ActiveTab = 'academy' | 'pocket' | 'documents' | 'dilemmas' | 'progress';
+export type ActiveTab = 'academy' | 'pocket' | 'documents' | 'dilemmas' | 'progress' | 'toolkit';
+
+export type DialectCode = 'en' | 'sw' | 'tu' | 'so' | 'om' | 'din' | 'ar_juba';
+
+export interface DialectInfo {
+  code: DialectCode;
+  label: string;
+  nativeName: string;
+  speechLang: string;
+}
+
+export const DIALECTS: DialectInfo[] = [
+  { code: 'en', label: 'English', nativeName: 'English (Original)', speechLang: 'en-KE' },
+  { code: 'sw', label: 'Kiswahili', nativeName: 'Kiswahili (East Africa)', speechLang: 'sw-KE' },
+  { code: 'tu', label: 'Turkana', nativeName: 'Ng’aturkana (Kakuma)', speechLang: 'sw-KE' },
+  { code: 'so', label: 'Somali', nativeName: 'Af-Soomaali (Horn of Africa)', speechLang: 'so-SO' },
+  { code: 'om', label: 'Oromo', nativeName: 'Afaan Oromoo (Great Lakes)', speechLang: 'om-ET' },
+  { code: 'din', label: 'Dinka', nativeName: 'Thuɔŋjäŋ (South Sudan)', speechLang: 'en-KE' },
+  { code: 'ar_juba', label: 'Juba Arabic', nativeName: 'Arabi Juba (Equatoria)', speechLang: 'ar-SD' },
+];
+
+export const getDialectVoicePrompt = (moduleTitle: string, dialect: DialectCode): { summaryTitle: string; voiceScript: string } => {
+  switch (dialect) {
+    case 'sw':
+      return {
+        summaryTitle: 'Muhtasari wa Sauti (Kiswahili)',
+        voiceScript: `Huu ni muhtasari wa somo la Juasafety Yako: ${moduleTitle}. Kumbuka: Vurugu za kijinsia au za nyumbani hazikubaliki kisheria. Iwapo umeshambuliwa au kuna jeraha, tafadhali fika kliniki ya IRC ndani ya masaa 72 kupokea kinga ya dharura ya PEP dhidi ya virusi vya UKIMWI. Unaweza kupiga simu bure kwa 1195 au 1517 kwa siri bila gharama yoyote.`
+      };
+    case 'tu':
+      return {
+        summaryTitle: 'Ekiwape Ng’aturkana (Turkana)',
+        voiceScript: `Ekiwape a ngina nyo kotere Juasafety Yako: ${moduleTitle}. Ani kitiye a ngina nyo eya a nyakatubokot ko Kakuma, topotooki kliniki a IRC kotere PEP a ngirisae 72. Kingar a akolong 1195 ka 1517 eya eyiengit a nyipuraet.`
+      };
+    case 'so':
+      return {
+        summaryTitle: 'Dulmar Maqal (Af-Soomaali)',
+        voiceScript: `Kani waa dulmar ku saabsan cutubka Juasafety Yako: ${moduleTitle}. Xadgudubka ku saleysan jinsiga waa wax aan la aqbali karin. Haddii aad la kulanto weerar ama qasbid, u tag xarunta IRC 72 saacadood gudahood si aad u hesho daawada PEP ee ka hortagga HIV. Wac bilaash 1195 ama 1517 si laguu caawiyo.`
+      };
+    case 'om':
+      return {
+        summaryTitle: 'Gabaabaa Sagalee (Afaan Oromoo)',
+        voiceScript: `Kun gabaabaa barnoota Juasafety Yako: ${moduleTitle}. Miidhaan saalaa kamiyyuu yakka fi hin hayyamamu. Yoo miidhaan ga'e, sa'aatii 72 keessatti gara kilinika IRC deemaa qoricha PEP fudhadhaa. Bilbila bilisaa 1195 yookaan 1517 fayyadamaa.`
+      };
+    case 'din':
+      return {
+        summaryTitle: 'Tɔ̈ŋ në Thuɔŋjäŋ (Dinka)',
+        voiceScript: `Kënë ee gɛ̈ɛ̈r de Juasafety Yako në biäk de: ${moduleTitle}. Kɔc cï tɔ̈ŋ GBV yök, lɔ baai de akïm IRC në thaa 72 kɔ̈u bï yïn yök wal de PEP bï gël tuany de HIV. Kɔ̈c ke lɔŋ ku kony de Kakuma akeye tɔ̈ në namba 1195 ku 1517.`
+      };
+    case 'ar_juba':
+      return {
+        summaryTitle: 'Kalam Soti (Arabi Juba)',
+        voiceScript: `De kalam mukhtasar min Juasafety Yako fi: ${moduleTitle}. Mafish zol andu haq yaadi banat wala niswan. Kan fi zol darabik wala ezaak, amshi sari sari fi clinic ta IRC gabil saa 72 ashik dawa ta PEP ta himaya min HIV. Dugo nomra bita 1195 wala 1517 bil batan kede.`
+      };
+    default:
+      return {
+        summaryTitle: 'English Audio Narration',
+        voiceScript: `Core summary for Juasafety Yako module: ${moduleTitle}. Gender-based violence is a violation of fundamental human rights. If sexual assault has occurred, seeking clinical care within the 72-hour golden window for HIV Post-Exposure Prophylaxis and emergency contraception is critical. Call toll-free 1195 or 1517 for confidential camp triage.`
+      };
+  }
+};
 
 export const EducationView: React.FC = () => {
   const [modules, setModules] = useState<EducationModule[]>(COMPREHENSIVE_CURRICULUM_MODULES);
@@ -64,6 +126,7 @@ export const EducationView: React.FC = () => {
   const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]);
   const [loadingQuiz, setLoadingQuiz] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [selectedDialect, setSelectedDialect] = useState<DialectCode>('en');
   
   // Dilemma state
   const [selectedDilemmaId, setSelectedDilemmaId] = useState<string>(FIELD_DILEMMAS[0].id);
@@ -149,7 +212,7 @@ export const EducationView: React.FC = () => {
     }
   };
 
-  const handleSpeechToggle = (textToRead: string) => {
+  const handleSpeechToggle = (moduleTitle: string, defaultContent: string) => {
     if (typeof window === 'undefined' || !('speechSynthesis' in window)) return;
 
     if (isSpeaking) {
@@ -157,8 +220,17 @@ export const EducationView: React.FC = () => {
       setIsSpeaking(false);
     } else {
       window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(textToRead.slice(0, 1500));
-      utterance.rate = 0.95;
+      const prompt = getDialectVoicePrompt(moduleTitle, selectedDialect);
+      const textToSpeak = selectedDialect === 'en' 
+        ? `${moduleTitle}. ${defaultContent.slice(0, 1200)}` 
+        : prompt.voiceScript;
+
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      const dialectInfo = DIALECTS.find(d => d.code === selectedDialect);
+      if (dialectInfo?.speechLang) {
+        utterance.lang = dialectInfo.speechLang;
+      }
+      utterance.rate = 0.92;
       utterance.onend = () => setIsSpeaking(false);
       utterance.onerror = () => setIsSpeaking(false);
       window.speechSynthesis.speak(utterance);
@@ -237,19 +309,53 @@ export const EducationView: React.FC = () => {
             <ArrowLeft className="w-4 h-4 mr-1" /> Back to Curriculum
           </button>
           
-          <button
-            onClick={() => handleSpeechToggle(`${selectedModule.title}. ${selectedModule.content}`)}
-            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all border ${
-              isSpeaking
-                ? 'bg-amber-500 text-white border-amber-500 animate-pulse'
-                : 'bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-gray-700'
-            }`}
-            title="Read module aloud"
-          >
-            {isSpeaking ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
-            <span>{isSpeaking ? 'Stop Audio' : 'Listen'}</span>
-          </button>
+          <div className="flex items-center gap-1.5">
+            <select
+              value={selectedDialect}
+              onChange={(e) => {
+                if (isSpeaking && typeof window !== 'undefined') window.speechSynthesis.cancel();
+                setIsSpeaking(false);
+                setSelectedDialect(e.target.value as DialectCode);
+              }}
+              className="text-[10px] font-bold px-2 py-1 rounded-xl bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-200 focus:outline-none"
+            >
+              {DIALECTS.map(d => (
+                <option key={d.code} value={d.code}>{d.label}</option>
+              ))}
+            </select>
+
+            <button
+              onClick={() => handleSpeechToggle(selectedModule.title, selectedModule.content)}
+              className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold transition-all border shadow-sm ${
+                isSpeaking
+                  ? 'bg-amber-500 text-white border-amber-500 animate-pulse'
+                  : 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-200 border-amber-300 dark:border-amber-700'
+              }`}
+              title="Read module summary in selected dialect"
+            >
+              {isSpeaking ? <VolumeX className="w-3.5 h-3.5" /> : <Volume2 className="w-3.5 h-3.5" />}
+              <span>{isSpeaking ? 'Stop Audio' : 'Audio Guide'}</span>
+            </button>
+          </div>
         </div>
+
+        {/* Dialect Voiceover Translated Prompt Banner (For Low Literacy / ESL Learners) */}
+        {selectedDialect !== 'en' && (
+          <div className="mb-4 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/40 dark:to-orange-950/20 border border-amber-200 dark:border-amber-800/60 p-3 rounded-2xl text-xs space-y-1">
+            <div className="flex items-center justify-between text-amber-900 dark:text-amber-200 font-bold text-[11px]">
+              <span className="flex items-center gap-1.5">
+                <Volume2 className="w-3.5 h-3.5 text-amber-600" />
+                {getDialectVoicePrompt(selectedModule.title, selectedDialect).summaryTitle}
+              </span>
+              <span className="text-[9px] uppercase tracking-wider bg-amber-200/60 dark:bg-amber-900/60 px-2 py-0.5 rounded-full">
+                Native Camp Voice
+              </span>
+            </div>
+            <p className="text-[11px] text-amber-800 dark:text-amber-300 italic leading-relaxed">
+              "{getDialectVoicePrompt(selectedModule.title, selectedDialect).voiceScript}"
+            </p>
+          </div>
+        )}
 
         {/* Hero Banner */}
         <div className="relative w-full h-44 sm:h-52 bg-gray-100 dark:bg-gray-800 rounded-2xl mb-4 overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm">
@@ -620,6 +726,18 @@ export const EducationView: React.FC = () => {
         >
           <Award className="w-3.5 h-3.5" />
           <span>Certification & Records</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('toolkit')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all border ${
+            activeTab === 'toolkit'
+              ? 'bg-brand-600 text-white border-brand-600 shadow-sm'
+              : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-700'
+          }`}
+        >
+          <Users className="w-3.5 h-3.5" />
+          <span>Peer Mobilizer Toolkit</span>
         </button>
       </div>
 
@@ -1193,6 +1311,264 @@ export const EducationView: React.FC = () => {
                 </div>
               ))
             )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 6: COMMUNITY CHAMPION / PEER EDUCATOR TOOLKIT */}
+      {activeTab === 'toolkit' && (
+        <div className="space-y-5 animate-fade-in">
+          {/* Header Banner */}
+          <div className="bg-gradient-to-r from-purple-700 via-indigo-700 to-brand-700 text-white p-5 rounded-3xl shadow-lg relative overflow-hidden">
+            <div className="relative z-10 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-wider">
+                  Field Mobilizer Guidebook
+                </span>
+                <Users className="w-5 h-5 text-purple-200" />
+              </div>
+              <h2 className="text-xl font-black leading-tight">
+                Peer Educator & Champion Toolkit
+              </h2>
+              <p className="text-xs text-purple-100 max-w-sm">
+                Standardized lesson summaries, icebreakers, and guided discussion prompts for running refugee residential block circles in Kakuma 1–4 and Kalobeyei.
+              </p>
+              
+              <div className="pt-2 flex gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="bg-white text-purple-900 hover:bg-purple-50 text-xs font-black uppercase tracking-wider px-4 py-2.5 rounded-xl shadow-md flex items-center gap-2 active:scale-95 transition"
+                >
+                  <Printer className="w-4 h-4" /> Print / Save PDF Pack
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Facilitator Gold Standards */}
+          <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/60 p-4 rounded-2xl text-xs space-y-2">
+            <h3 className="font-black text-amber-900 dark:text-amber-200 text-xs uppercase tracking-wider flex items-center gap-1.5">
+              <ShieldAlert className="w-4 h-4 text-amber-600" /> Facilitator "Do No Harm" Core Rules
+            </h3>
+            <ul className="space-y-1.5 text-amber-900/90 dark:text-amber-300/90 text-[11px]">
+              <li className="flex items-start gap-2">
+                <span className="font-bold">•</span>
+                <span><strong>Absolute Confidentiality:</strong> Everything shared in the circle stays in the circle unless there is imminent danger to life or child abuse.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="font-bold">•</span>
+                <span><strong>No Forced Sharing:</strong> Never pressure a participant to disclose personal trauma or assault incidents during group discussions.</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="font-bold">•</span>
+                <span><strong>Survivor-Centered Referrals:</strong> If someone approaches you privately, connect them immediately to IRC clinic triage or call toll-free 1195/1517.</span>
+              </li>
+            </ul>
+          </div>
+
+          {/* 5 Modular Discussion Guides */}
+          <div className="space-y-4">
+            <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest">
+              5 Residential Discussion Circle Modules
+            </h3>
+
+            {/* Circle 1 */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm space-y-3">
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="text-[10px] font-black uppercase text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-950/40 px-2.5 py-0.5 rounded-full">
+                    Discussion Circle 1 • 45 Mins
+                  </span>
+                  <h4 className="text-base font-bold text-gray-900 dark:text-white mt-1">
+                    Deconstructing Power, Gender Roles & Consent
+                  </h4>
+                  <p className="text-xs text-gray-500">Target Group: Youth Champions & Residential Block Residents</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-slate-750 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
+                <p className="font-bold text-gray-800 dark:text-gray-200">
+                  🧊 Icebreaker Question:
+                </p>
+                <p className="text-gray-600 dark:text-gray-300 italic text-[11px]">
+                  "When a decision is made in a household in our block, who holds the final voice, and what happens when someone disagrees?"
+                </p>
+
+                <p className="font-bold text-gray-800 dark:text-gray-200 pt-1">
+                  💬 3 Facilitation Questions:
+                </p>
+                <ol className="list-decimal pl-4 space-y-1 text-[11px] text-gray-600 dark:text-gray-300">
+                  <li>What is the difference between biological sex and socially enforced gender expectations?</li>
+                  <li>How does power imbalance lead to harassment around water distribution points or firewood gathering?</li>
+                  <li>What does clear, enthusiastic consent mean in intimate relationships?</li>
+                </ol>
+
+                <p className="font-bold text-gray-800 dark:text-gray-200 pt-1">
+                  🎯 Block Action Commitment:
+                </p>
+                <p className="text-gray-600 dark:text-gray-300 text-[11px]">
+                  Participants agree on a neighborhood mutual watch to accompany women and girls during evening water fetching.
+                </p>
+              </div>
+            </div>
+
+            {/* Circle 2 */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm space-y-3">
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="text-[10px] font-black uppercase text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/40 px-2.5 py-0.5 rounded-full">
+                    Discussion Circle 2 • 45 Mins
+                  </span>
+                  <h4 className="text-base font-bold text-gray-900 dark:text-white mt-1">
+                    Emergency Clinical Care & The 72-Hour Golden Window
+                  </h4>
+                  <p className="text-xs text-gray-500">Target Group: Women Caretaker Groups & Community Elders</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-slate-750 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
+                <p className="font-bold text-gray-800 dark:text-gray-200">
+                  🧊 Myth-Busting Question:
+                </p>
+                <p className="text-gray-600 dark:text-gray-300 italic text-[11px]">
+                  "If sexual violence occurs, why do some families advise waiting for customary elders before seeing a doctor? What is the life-threatening cost of waiting?"
+                </p>
+
+                <p className="font-bold text-gray-800 dark:text-gray-200 pt-1">
+                  💬 3 Facilitation Questions:
+                </p>
+                <ol className="list-decimal pl-4 space-y-1 text-[11px] text-gray-600 dark:text-gray-300">
+                  <li>What is Post-Exposure Prophylaxis (PEP) and how does it prevent HIV within 72 hours?</li>
+                  <li>Why must survivors avoid bathing or washing clothes before clinical exam to preserve evidence?</li>
+                  <li>Where is the nearest 24/7 IRC medical clinic triage in our camp zone?</li>
+                </ol>
+
+                <p className="font-bold text-gray-800 dark:text-gray-200 pt-1">
+                  🎯 Block Action Commitment:
+                </p>
+                <p className="text-gray-600 dark:text-gray-300 text-[11px]">
+                  Every attendee saves toll-free helpline 1195 and 1517 on their mobile device or memorizes the numbers.
+                </p>
+              </div>
+            </div>
+
+            {/* Circle 3 */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm space-y-3">
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="text-[10px] font-black uppercase text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-0.5 rounded-full">
+                    Discussion Circle 3 • 40 Mins
+                  </span>
+                  <h4 className="text-base font-bold text-gray-900 dark:text-white mt-1">
+                    Psychological First Aid (PFA) & Overcoming Stigma
+                  </h4>
+                  <p className="text-xs text-gray-500">Target Group: Block Volunteers & Community Health Promoters</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-slate-750 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
+                <p className="font-bold text-gray-800 dark:text-gray-200">
+                  🧊 Empathy Prompt:
+                </p>
+                <p className="text-gray-600 dark:text-gray-300 italic text-[11px]">
+                  "If your sister or neighbor disclosed an assault to you in secret, what words would make her feel safe versus blamed?"
+                </p>
+
+                <p className="font-bold text-gray-800 dark:text-gray-200 pt-1">
+                  💬 3 Facilitation Questions:
+                </p>
+                <ol className="list-decimal pl-4 space-y-1 text-[11px] text-gray-600 dark:text-gray-300">
+                  <li>How do we practice Look, Listen, Link without interrogating the survivor?</li>
+                  <li>Why does victim-blaming silence survivors and protect perpetrators?</li>
+                  <li>How do we combat camp rumors and maintain strict confidentiality?</li>
+                </ol>
+              </div>
+            </div>
+
+            {/* Circle 4 */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm space-y-3">
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="text-[10px] font-black uppercase text-teal-600 dark:text-teal-400 bg-teal-50 dark:bg-teal-950/40 px-2.5 py-0.5 rounded-full">
+                    Discussion Circle 4 • 50 Mins
+                  </span>
+                  <h4 className="text-base font-bold text-gray-900 dark:text-white mt-1">
+                    Ending FGM & Child Marriage under Kenyan & International Law
+                  </h4>
+                  <p className="text-xs text-gray-500">Target Group: Community Elders, Clan Leaders & Parents</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-slate-750 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
+                <p className="font-bold text-gray-800 dark:text-gray-200">
+                  ⚖️ Legal Reality Check:
+                </p>
+                <p className="text-gray-600 dark:text-gray-300 text-[11px]">
+                  Under the Prohibition of FGM Act 2011 and Children Act 2022, cutting or child marriage carries severe prison sentences and fines. Traditional rites of passage can be celebrated without physical cutting.
+                </p>
+
+                <p className="font-bold text-gray-800 dark:text-gray-200 pt-1">
+                  💬 3 Facilitation Questions:
+                </p>
+                <ol className="list-decimal pl-4 space-y-1 text-[11px] text-gray-600 dark:text-gray-300">
+                  <li>What are the severe lifelong medical harms of FGM (hemorrhage, fistula, childbirth complications)?</li>
+                  <li>How can we separate cultural identity and values from harmful bodily mutilation?</li>
+                  <li>How can block champions safely report child marriage plans to Childline 116?</li>
+                </ol>
+              </div>
+            </div>
+
+            {/* Circle 5 */}
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-5 border border-gray-100 dark:border-gray-700 shadow-sm space-y-3">
+              <div className="flex justify-between items-start">
+                <div>
+                  <span className="text-[10px] font-black uppercase text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-0.5 rounded-full">
+                    Discussion Circle 5 • 40 Mins
+                  </span>
+                  <h4 className="text-base font-bold text-gray-900 dark:text-white mt-1">
+                    Safe Anonymous Reporting with Juasafety Yako
+                  </h4>
+                  <p className="text-xs text-gray-500">Target Group: All Residential Camp Residents</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-slate-750 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 space-y-2 text-xs">
+                <p className="font-bold text-gray-800 dark:text-gray-200">
+                  📱 Practical Demonstration:
+                </p>
+                <p className="text-gray-600 dark:text-gray-300 text-[11px]">
+                  Show how anonymous tracking codes work, how offline reports sync when internet returns, and how to dial *384*1195# or call 1517 with zero airtime.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Printable Session Log Template */}
+          <div className="bg-white dark:bg-gray-800 p-5 rounded-2xl border border-gray-200 dark:border-gray-700 shadow-sm space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-bold text-xs text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                <FileCheck className="w-4 h-4 text-emerald-600" /> Printable Mobilizer Session Log Sheet
+              </h4>
+              <button
+                onClick={() => window.print()}
+                className="text-[10px] font-black text-brand-600 uppercase hover:underline"
+              >
+                Print Sheet
+              </button>
+            </div>
+
+            <div className="border border-dashed border-gray-300 dark:border-gray-600 p-3 rounded-xl text-[10px] text-gray-500 space-y-2 font-mono">
+              <div className="grid grid-cols-2 gap-2">
+                <div>CAMP ZONE / BLOCK: ___________________</div>
+                <div>DATE: ___________________</div>
+                <div>FACILITATOR NAME: ___________________</div>
+                <div>MODULE DISCUSSED: [ 1 ] [ 2 ] [ 3 ] [ 4 ] [ 5 ]</div>
+              </div>
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
+                <div>TOTAL ATTENDEES: [ ___ Women ] [ ___ Men ] [ ___ Youth ]</div>
+                <div className="mt-1">CONFIDENTIAL REFERRALS INITIATED: [ ___ Clinic ] [ ___ Protection Desk ]</div>
+              </div>
+            </div>
           </div>
         </div>
       )}

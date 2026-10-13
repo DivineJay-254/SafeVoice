@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Report, ReportStatus } from '../types';
 import { DatabaseService } from '../services/databaseService';
-import { Search, Clipboard, Loader2, CheckCircle2, Circle, History, ArrowRight, MessageSquare } from 'lucide-react';
+import { EvidenceLocker } from './EvidenceLocker';
+import { Search, Clipboard, Loader2, CheckCircle2, Circle, History, ArrowRight, MessageSquare, Shield, Lock } from 'lucide-react';
 
 interface Props {
   initialCode?: string;
@@ -200,6 +201,9 @@ export const TrackView: React.FC<Props> = ({ initialCode = '' }) => {
             <h4 className="font-medium mb-2 text-sm text-gray-500">Submitted Description</h4>
             <p className="text-gray-700 dark:text-gray-300 italic">"{report.description}"</p>
           </div>
+
+          {/* Encrypted Client-Side Evidence Vault */}
+          <EvidenceLocker trackingCode={report.trackingCode} />
         </div>
       )}
 

@@ -8,11 +8,13 @@ export enum AppView {
   CHAT = 'chat',
   HUMAN_CHAT = 'human_chat',
   SAFETY_PLAN = 'safety_plan',
+  PEP_EMERGENCY = 'pep_emergency',
+  CAMOUFLAGE = 'camouflage',
   ADMIN_LOGIN = 'admin_login',
   ADMIN_DASHBOARD = 'admin_dashboard',
 }
 
-export type Language = 'en' | 'sw' | 'fr' | 'lg' | 'so' | 'am' | 'om' | 'rw' | 'ar' | 'rn' | 'ti';
+export type Language = 'en' | 'sw' | 'fr' | 'lg' | 'so' | 'am' | 'om' | 'rw' | 'ar' | 'rn' | 'ti' | 'tu' | 'din' | 'ar_juba';
 
 export enum GBVType {
   PHYSICAL = 'Physical Violence',
@@ -139,6 +141,11 @@ export interface SupportCentre {
   address: string;
   distance: string;
   type: string;
+  campZone?: 'Kakuma 1' | 'Kakuma 2' | 'Kakuma 3' | 'Kakuma 4' | 'Kalobeyei' | 'All';
+  hours?: string;
+  emergencyPhone?: string;
+  isVerifiedWGSS?: boolean;
+  walkingDirections?: string;
   lat?: number;
   lng?: number;
   mapUri?: string;
