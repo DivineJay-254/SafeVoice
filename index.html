@@ -4,8 +4,39 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>Juasafety Yako GBV App</title>
+    <title>Juasafety Yako</title>
+    <meta name="description" content="An anonymous reporting, tracking, and education platform for Gender-Based Violence support." />
+    <meta property="og:title" content="Juasafety Yako" />
+    <meta property="og:description" content="An anonymous reporting, tracking, and education platform for Gender-Based Violence support." />
     <meta name="theme-color" content="#db2777" />
+    <script>
+      // Ignore harmless Vite HMR WebSocket errors in iframe/cloud preview
+      (function() {
+        const origConsoleError = console.error;
+        console.error = function(...args) {
+          if (args.length > 0 && typeof args[0] === 'string' && (args[0].includes('WebSocket closed without opened') || args[0].includes('[vite] WebSocket'))) {
+            return;
+          }
+          origConsoleError.apply(console, args);
+        };
+
+        window.addEventListener('error', function(event) {
+          if (event && event.message && event.message.includes('WebSocket closed without opened')) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            return true;
+          }
+        }, true);
+
+        window.addEventListener('unhandledrejection', function(event) {
+          if (event && event.reason && String(event.reason).includes('WebSocket closed without opened')) {
+            event.preventDefault();
+            event.stopImmediatePropagation();
+            return true;
+          }
+        }, true);
+      })();
+    </script>
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />

@@ -13,6 +13,7 @@ import { PanicButton } from './components/PanicButton';
 import { FloatingAI } from './components/FloatingAI'; 
 import { PWAInstallButton } from './components/PWAInstallButton';
 import { useOnlineStatus } from './components/useOnlineStatus';
+import { useDeviceShake } from './components/useDeviceShake';
 import { CamouflageView } from './components/CamouflageView';
 import { PepEmergencyAssistant } from './components/PepEmergencyAssistant';
 import { DatabaseService } from './services/databaseService';
@@ -43,7 +44,8 @@ import {
   Clock,
   HeartPulse,
   Sparkles,
-  ShieldCheck
+  ShieldCheck,
+  CloudSun
 } from 'lucide-react';
 
 const App: React.FC = () => {
@@ -143,6 +145,25 @@ const App: React.FC = () => {
     window.location.replace("https://www.google.com/search?q=weather+today");
   };
 
+  const [camouflageSkin, setCamouflageSkin] = useState<'weather' | 'calculator'>('weather');
+
+  const handleDoubleShake = () => {
+    // Shaken twice -> instantly camouflage to weather app!
+    if (stealthAutoClear) {
+      localStorage.removeItem('juasafety_report_draft');
+      localStorage.removeItem('juasafety_yako_report_history');
+      sessionStorage.clear();
+    }
+    setCamouflageSkin('weather');
+    setView(AppView.CAMOUFLAGE);
+    setNotifications(prev => [...prev, "Device shaken twice: Switched to Weather App disguise"]);
+  };
+
+  useDeviceShake({
+    onDoubleShake: handleDoubleShake,
+    enabled: view !== AppView.CAMOUFLAGE
+  });
+
   const handleReportSubmitted = (code: string) => {
     setLastTrackingCode(code);
     setLastKnownStatus('');
@@ -181,7 +202,7 @@ const App: React.FC = () => {
     return (
       <div className="flex justify-center min-h-screen bg-slate-900">
         <div className="w-full max-w-md h-[100dvh] relative shadow-2xl overflow-hidden flex flex-col">
-          <CamouflageView onUnlock={() => setView(AppView.HOME)} />
+          <CamouflageView onUnlock={() => setView(AppView.HOME)} initialMode={camouflageSkin} />
         </div>
       </div>
     );
@@ -207,11 +228,14 @@ const App: React.FC = () => {
               <div className="flex items-center gap-1.5">
                 {/* Camouflage / Disguise Button */}
                 <button 
-                  onClick={() => setView(AppView.CAMOUFLAGE)} 
+                  onClick={() => {
+                    setCamouflageSkin('weather');
+                    setView(AppView.CAMOUFLAGE);
+                  }} 
                   className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 py-1.5 rounded-full text-xs font-bold flex items-center shadow-sm transition-transform active:scale-95"
-                  title="Switch to calculator disguise"
+                  title="Switch to weather app disguise (or shake device twice)"
                 >
-                  <Calculator className="w-3.5 h-3.5 mr-1 text-slate-300" /> Disguise
+                  <CloudSun className="w-3.5 h-3.5 mr-1 text-amber-400" /> Disguise
                 </button>
 
                 {/* Stealth Safety Settings */}
@@ -420,6 +444,49 @@ const App: React.FC = () => {
               </div>
 
               <div className="space-y-3 text-xs">
+                {/* Shake Twice to Disguise Feature */}
+                <div className="p-3 bg-sky-50 dark:bg-sky-950/40 rounded-2xl border border-sky-200 dark:border-sky-800 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-sky-900 dark:text-sky-200 flex items-center gap-1.5">
+                      <CloudSun className="w-4 h-4 text-sky-600" /> Shake Device Twice to Disguise
+                    </h4>
+                    <span className="text-[10px] bg-sky-200 dark:bg-sky-900 text-sky-800 dark:text-sky-200 px-2 py-0.5 rounded-full font-bold">
+                      Active
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-sky-700 dark:text-sky-300 leading-relaxed">
+                    When someone approaches or in unsafe situations, shake your phone twice rapidly (or press Escape twice on keyboard) to immediately disguise this app as a Turkana West Weather App.
+                  </p>
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      onClick={() => {
+                        setShowSafetySettings(false);
+                        handleDoubleShake();
+                      }}
+                      className="bg-sky-600 hover:bg-sky-700 text-white font-bold px-3 py-1.5 rounded-xl text-[11px] shadow-sm flex items-center gap-1.5 active:scale-95 transition"
+                    >
+                      <Sparkles className="w-3.5 h-3.5" /> Test Double Shake (Weather Disguise)
+                    </button>
+                    {typeof (window as any).DeviceMotionEvent !== 'undefined' && typeof ((window as any).DeviceMotionEvent as any).requestPermission === 'function' && (
+                      <button
+                        onClick={async () => {
+                          try {
+                            const res = await ((window as any).DeviceMotionEvent as any).requestPermission();
+                            if (res === 'granted') {
+                              setNotifications(prev => [...prev, "Motion sensor permission granted for shake detection"]);
+                            }
+                          } catch (err) {
+                            console.error(err);
+                          }
+                        }}
+                        className="bg-sky-100 dark:bg-sky-900 text-sky-800 dark:text-sky-200 font-bold px-2.5 py-1.5 rounded-xl text-[10px]"
+                      >
+                        Enable iOS Motion
+                      </button>
+                    )}
+                  </div>
+                </div>
+
                 {/* Stealth Auto-Clear Switch */}
                 <div className="p-3 bg-gray-50 dark:bg-gray-700/60 rounded-2xl border border-gray-200 dark:border-gray-700 flex items-start justify-between gap-3">
                   <div>
@@ -427,7 +494,7 @@ const App: React.FC = () => {
                       <ShieldCheck className="w-3.5 h-3.5 text-amber-600" /> Stealth Auto-Clear on Exit
                     </h4>
                     <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
-                      Wipes local search history, draft inputs, and cached incident notes when Quick Exit is clicked or when minimizing the app.
+                      Wipes local search history, draft inputs, and cached incident notes when Quick Exit is clicked, device is shaken, or when minimizing the app.
                     </p>
                   </div>
                   <button
@@ -442,23 +509,45 @@ const App: React.FC = () => {
                   </button>
                 </div>
 
-                {/* Camouflage Mode Shortcut */}
-                <div className="p-3 bg-gray-50 dark:bg-gray-700/60 rounded-2xl border border-gray-200 dark:border-gray-700 flex items-center justify-between">
-                  <div>
-                    <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
-                      <Calculator className="w-3.5 h-3.5 text-indigo-600" /> Camouflage Calculator Skin
-                    </h4>
-                    <p className="text-[10px] text-gray-400 mt-0.5">Turns app into working calculator. Unlock: 1195=</p>
+                {/* Camouflage Skins Selector */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="p-3 bg-gray-50 dark:bg-gray-700/60 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col justify-between">
+                    <div>
+                      <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-1">
+                        <CloudSun className="w-3.5 h-3.5 text-sky-600" /> Weather Skin
+                      </h4>
+                      <p className="text-[10px] text-gray-400 mt-0.5">Turkana West weather outlook. Unlock PIN: 1195</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setShowSafetySettings(false);
+                        setCamouflageSkin('weather');
+                        setView(AppView.CAMOUFLAGE);
+                      }}
+                      className="mt-2 bg-sky-600 hover:bg-sky-500 text-white text-[10px] font-bold py-1.5 rounded-xl text-center shadow-sm"
+                    >
+                      Enter Weather Skin
+                    </button>
                   </div>
-                  <button
-                    onClick={() => {
-                      setShowSafetySettings(false);
-                      setView(AppView.CAMOUFLAGE);
-                    }}
-                    className="bg-indigo-600 text-white text-[10px] font-bold px-3 py-1.5 rounded-xl flex-shrink-0 shadow-sm"
-                  >
-                    Enter Skin
-                  </button>
+
+                  <div className="p-3 bg-gray-50 dark:bg-gray-700/60 rounded-2xl border border-gray-200 dark:border-gray-700 flex flex-col justify-between">
+                    <div>
+                      <h4 className="font-bold text-gray-900 dark:text-white flex items-center gap-1">
+                        <Calculator className="w-3.5 h-3.5 text-indigo-600" /> Calc Skin
+                      </h4>
+                      <p className="text-[10px] text-gray-400 mt-0.5">Working calculator. Type 1195= to unlock</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setShowSafetySettings(false);
+                        setCamouflageSkin('calculator');
+                        setView(AppView.CAMOUFLAGE);
+                      }}
+                      className="mt-2 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-bold py-1.5 rounded-xl text-center shadow-sm"
+                    >
+                      Enter Calc Skin
+                    </button>
+                  </div>
                 </div>
               </div>
 
