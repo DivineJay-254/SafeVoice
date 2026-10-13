@@ -105,6 +105,27 @@ service cloud.firestore {
 
     // Rules
     
+    // Public Content Rules (Moved to top for priority)
+    match /education_modules/{moduleId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /hotlines/{hotlineId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /support_centres/{centreId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /system/{docId} {
+      allow read: if true;
+    }
+
+    // Auth & Personal Data Rules
     match /reports/{reportId} {
       allow create: if isValidReport(request.resource.data);
       allow get: if true;
@@ -128,25 +149,6 @@ service cloud.firestore {
         allow create: if isValidChatMessage(request.resource.data) && isRecent(request.resource.data.timestamp) && 
                       (isAdmin() || (get(/databases/$(database)/documents/chat_sessions/$(sessionId)).data.anonymousUserId == request.auth.uid));
       }
-    }
-
-    match /education_modules/{moduleId} {
-      allow get, list: if true;
-      allow write: if isAdmin();
-    }
-
-    match /hotlines/{hotlineId} {
-      allow get, list: if true;
-      allow write: if isAdmin();
-    }
-
-    match /support_centres/{centreId} {
-      allow get, list: if true;
-      allow write: if isAdmin();
-    }
-
-    match /system/{docId} {
-      allow read: if true;
     }
 
     match /users/{userId} {

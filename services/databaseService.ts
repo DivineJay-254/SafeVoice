@@ -4,8 +4,9 @@ import { db, auth, storage } from '../firebaseConfig';
 import { collection, addDoc, query, where, orderBy, onSnapshot, serverTimestamp, updateDoc, doc, getDoc, getDocs, arrayUnion, deleteDoc, getDocFromServer, limit, setDoc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { v4 as uuidv4 } from 'uuid';
+import { CacheService } from './cacheService';
 
-const OFFLINE_REPORTS_KEY = 'safevoice_offline_reports';
+const OFFLINE_REPORTS_KEY = 'juasafety_yako_offline_reports';
 
 enum OperationType {
   CREATE = 'create',
@@ -60,6 +61,29 @@ function handleFirestoreError(error: unknown, operationType: OperationType, path
 
 export const DatabaseService = {
     async createReport(data: any): Promise<Report> {
+        // If device is offline, directly cache locally
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+            const queued = CacheService.queueReportOffline(data);
+            return {
+                id: queued.id,
+                trackingCode: queued.localCode,
+                type: data.type,
+                location: data.location,
+                description: data.description || `Report of ${data.type} (Saved offline)`,
+                phoneNumber: data.phoneNumber || '',
+                anonymousUserId: data.anonymousUserId || 'anon_offline',
+                status: ReportStatus.RECEIVED,
+                createdAt: queued.timestamp,
+                statusHistory: [{ 
+                    status: ReportStatus.RECEIVED, 
+                    timestamp: queued.timestamp, 
+                    note: 'Saved in offline storage. Queued for automatic cloud sync.' 
+                }],
+                caseUpdates: [],
+                attachments: []
+            };
+        }
+
         const trackingCode = Math.random().toString(36).substring(2, 10).toUpperCase();
         const attachments: Attachment[] = [];
 
@@ -103,22 +127,66 @@ export const DatabaseService = {
             this.addToHistory(trackingCode);
             return { id: docRef.id, ...reportData };
         } catch (error) {
-            handleFirestoreError(error, OperationType.CREATE, 'reports');
-            throw error;
+            console.warn('Network / Firestore failure submitting report, saving to offline cache:', error);
+            const queued = CacheService.queueReportOffline(data);
+            return {
+                id: queued.id,
+                trackingCode: queued.localCode,
+                type: data.type,
+                location: data.location,
+                description: data.description || `Report of ${data.type} (Saved offline)`,
+                phoneNumber: data.phoneNumber || '',
+                anonymousUserId: data.anonymousUserId || 'anon_offline',
+                status: ReportStatus.RECEIVED,
+                createdAt: queued.timestamp,
+                statusHistory: [{ 
+                    status: ReportStatus.RECEIVED, 
+                    timestamp: queued.timestamp, 
+                    note: 'Connection error persisted. Saved in offline storage and queued for sync.' 
+                }],
+                caseUpdates: [],
+                attachments: []
+            };
         }
     },
 
     async getReportByCode(code: string): Promise<Report | null> {
+        // First check local offline queue
+        const queuedReports = CacheService.getQueuedReports();
+        const local = queuedReports.find(r => r.localCode.toUpperCase() === code.trim().toUpperCase());
+        if (local) {
+            return {
+                id: local.id,
+                trackingCode: local.localCode,
+                type: local.data.type,
+                location: local.data.location,
+                description: local.data.description,
+                phoneNumber: local.data.phoneNumber || '',
+                anonymousUserId: local.data.anonymousUserId || 'anon',
+                status: local.synced ? ReportStatus.IN_REVIEW : ReportStatus.RECEIVED,
+                createdAt: local.timestamp,
+                statusHistory: [
+                    { 
+                        status: ReportStatus.RECEIVED, 
+                        timestamp: local.timestamp,
+                        note: local.synced ? 'Synced to server' : 'Stored locally in device cache (queued for sync)' 
+                    }
+                ],
+                caseUpdates: [],
+                attachments: []
+            };
+        }
+
         const path = 'reports';
         try {
-            const q = query(collection(db, path), where('trackingCode', '==', code), limit(1));
+            const q = query(collection(db, path), where('trackingCode', '==', code.trim().toUpperCase()), limit(1));
             const snapshot = await getDocs(q);
             if (snapshot.empty) return null;
             const d = snapshot.docs[0];
             return { id: d.id, ...d.data() } as Report;
         } catch (error) {
-            handleFirestoreError(error, OperationType.GET, path);
-            throw error;
+            console.warn('Firestore getReportByCode failed, checking local cache:', error);
+            return null;
         }
     },
 
@@ -181,42 +249,15 @@ export const DatabaseService = {
         try {
             const q = query(collection(db, path));
             const snapshot = await getDocs(q);
-            if (snapshot.empty) {
-                const modules = [
-                    { 
-                      id: 'kakuma-diversity', 
-                      title: 'Diversity & Inclusion (Kakuma)', 
-                      description: 'Peaceful coexistence in the camp.', 
-                      imageUrl: 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&q=80&w=800', 
-                      content: `1. Diversity: The camp is composed of many diversities (gender, ethnicities, age, language, nationality, sexual orientation). It is normal to be different.
-    2. Peaceful Coexistence: Harmony is fundamental to well-being. We all have a responsibility to create an environment free from discrimination.
-    3. Non-Discrimination: UNHCR and partners do not tolerate discrimination. If you feel discriminated against, you have the right to report.
-    4. Human Rights: Rights are inherent and cannot be taken away. Everyone has a right to be safe.
-    5. Service Points: Report concerns to:
-    - DRC: 0800720414
-    - UNHCR: 1517` 
-                    },
-                    { 
-                      id: 'lgbtiq-protection', 
-                      title: 'LGBTIQ+ Protection (Kakuma)', 
-                      description: 'Inclusive services for all refugees.', 
-                      imageUrl: 'https://images.unsplash.com/photo-1541339907198-e08756ebafe3?auto=format&fit=crop&q=80&w=800', 
-                      content: `Message 1: Commitment. UNHCR works to protect all LGBTIQ+ refugees. Reach out via Field posts, Protection email, help lines, or police.
-    Message 2: Freedom of Movement. Be aware of risks in secondary migration (trafficking, smuggling, GBV, arbitrary arrests).
-    Message 3: Efforts in Kakuma/Kalobeyei. Progress is being made in shelter relocation sensitivity, health services with sensitive workers, and linkage with child protection teams.
-    Message 4: Legal Environment. The Refugees Act 2021 reaffirms protection commitments. Advocacy continues for specialized counselling and inclusion.` 
-                    }
-                ];
-                for (const m of modules) {
-                    await addDoc(collection(db, path), m);
-                }
+            if (!snapshot.empty) {
+                const modules = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as EducationModule));
+                CacheService.setCachedEducation(modules);
                 return modules;
             }
-            return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as EducationModule));
         } catch (error) {
-            handleFirestoreError(error, OperationType.GET, path);
-            throw error;
+            console.warn("Fetch education_modules failed, using cached modules:", error);
         }
+        return CacheService.getCachedEducation();
     },
 
     async getHotlines(): Promise<Hotline[]> {
@@ -224,23 +265,15 @@ export const DatabaseService = {
         try {
             const q = query(collection(db, path));
             const snapshot = await getDocs(q);
-            if (snapshot.empty) {
-                const hotlines = [
-                    { id: '1', name: 'National GBV Helpline', number: '1195', category: 'Emergency' },
-                    { id: '2', name: 'UNHCR Kakuma Helpline', number: '1517', category: 'Emergency' },
-                    { id: '3', name: 'DRC Toll-free (Kakuma)', number: '0800720414', category: 'Emergency' },
-                    { id: '4', name: 'Police Emergency', number: '999', category: 'Emergency' }
-                ];
-                for (const h of hotlines) {
-                    await addDoc(collection(db, path), h);
-                }
+            if (!snapshot.empty) {
+                const hotlines = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Hotline));
+                CacheService.setCachedHotlines(hotlines);
                 return hotlines;
             }
-            return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Hotline));
         } catch (error) {
-            handleFirestoreError(error, OperationType.GET, path);
-            throw error;
+            console.warn("Fetch hotlines failed, using cached hotlines:", error);
         }
+        return CacheService.getCachedHotlines();
     },
 
     async getSupportCentres(lat: number, lng: number): Promise<SupportCentre[]> {
@@ -248,21 +281,15 @@ export const DatabaseService = {
         try {
             const q = query(collection(db, path));
             const snapshot = await getDocs(q);
-            if (snapshot.empty) {
-                const centres = [
-                    { id: '1', name: 'IRC Kalobeyei Super Clinic', address: 'Kalobeyei Settlement, Village 1', type: 'Medical', distance: 'Nearby', lat: 3.7, lng: 34.8 },
-                    { id: '2', name: 'DRC Kalobeyei Protection Desk', address: 'Kalobeyei Reception Centre', type: 'Protection', distance: 'Nearby', lat: 3.71, lng: 34.81 }
-                ];
-                for (const c of centres) {
-                    await addDoc(collection(db, path), c);
-                }
-                return centres as SupportCentre[];
+            if (!snapshot.empty) {
+                const centres = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as SupportCentre));
+                CacheService.setCachedCentres(centres);
+                return centres;
             }
-            return snapshot.docs.map(d => ({ id: d.id, ...d.data() } as SupportCentre));
         } catch (error) {
-            handleFirestoreError(error, OperationType.GET, path);
-            throw error;
+            console.warn("Fetch support_centres failed, using cached centres:", error);
         }
+        return CacheService.getCachedCentres();
     },
 
     async startChatSession(anonId: string): Promise<string> {
@@ -424,20 +451,72 @@ export const DatabaseService = {
     },
 
     addToHistory(code: string) {
-        const history = JSON.parse(localStorage.getItem('sv_hist') || '[]');
-        if (!history.includes(code)) { history.unshift(code); localStorage.setItem('sv_hist', JSON.stringify(history.slice(0, 10))); }
+        const history = JSON.parse(localStorage.getItem('jy_hist') || '[]');
+        if (!history.includes(code)) { history.unshift(code); localStorage.setItem('jy_hist', JSON.stringify(history.slice(0, 10))); }
     },
-    getHistory(): string[] { return JSON.parse(localStorage.getItem('sv_hist') || '[]'); },
+    getHistory(): string[] { return JSON.parse(localStorage.getItem('jy_hist') || '[]'); },
+
+    async syncOfflineReports(): Promise<{ synced: number; failed: number }> {
+        const queuedReports = CacheService.getQueuedReports().filter(r => !r.synced);
+        if (queuedReports.length === 0) return { synced: 0, failed: 0 };
+
+        let synced = 0;
+        let failed = 0;
+
+        for (const r of queuedReports) {
+            try {
+                const reportData: any = {
+                    trackingCode: r.localCode,
+                    type: r.data.type,
+                    location: r.data.location,
+                    description: r.data.description,
+                    phoneNumber: r.data.phoneNumber || '',
+                    anonymousUserId: r.data.anonymousUserId || 'anon',
+                    status: ReportStatus.RECEIVED,
+                    createdAt: r.timestamp,
+                    statusHistory: [
+                        { status: ReportStatus.RECEIVED, timestamp: r.timestamp, note: 'Initially recorded offline' },
+                        { status: ReportStatus.RECEIVED, timestamp: new Date().toISOString(), note: 'Synced from offline device cache to cloud database' }
+                    ],
+                    caseUpdates: [],
+                    attachments: []
+                };
+
+                await addDoc(collection(db, 'reports'), reportData);
+                CacheService.markReportSynced(r.id);
+                this.addToHistory(r.localCode);
+                synced++;
+            } catch (err) {
+                console.warn(`Sync failed for report ${r.localCode}:`, err);
+                failed++;
+            }
+        }
+
+        return { synced, failed };
+    },
+
     async checkConnection() { 
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+            return { 
+                success: false, 
+                isOffline: true,
+                message: 'No internet connection detected. Offline mode and cached resources are active.' 
+            };
+        }
         try {
             // Test connection with a server-side fetch
             await getDocFromServer(doc(db, 'system', 'health'));
             return { success: true, message: 'Connected' }; 
         } catch (error: any) {
-            if (error.message?.includes('client is offline')) {
-                return { success: false, message: 'Firebase client is offline. Check configuration.' };
+            const msg = error?.message || '';
+            if (msg.includes('client is offline') || msg.includes('unavailable') || msg.includes('network')) {
+                return { 
+                    success: false, 
+                    isOffline: true,
+                    message: 'Cloud database unreachable. Cached report templates and safety resources are operational.' 
+                };
             }
-            // Other errors are fine, as long as it's not a connection error
+            // Other benign errors (e.g. missing doc or permission on health doc) mean network is reached
             return { success: true, message: 'Connected' };
         }
     }

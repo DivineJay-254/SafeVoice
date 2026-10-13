@@ -12,12 +12,12 @@ export const PanicButton: React.FC<PanicButtonProps> = ({ lang }) => {
   const t = getTranslation(lang);
 
   const handlePanic = () => {
-    const trustedContact = localStorage.getItem('safevoice_sos_contact');
+    const trustedContact = localStorage.getItem('juasafety_yako_sos_contact');
     
     if (!trustedContact) {
       const input = prompt(t.emergency_contact_prompt);
       if (input) {
-        localStorage.setItem('safevoice_sos_contact', input);
+        localStorage.setItem('juasafety_yako_sos_contact', input);
         sendSms(input);
       } else {
         alert(t.no_contact_alert);

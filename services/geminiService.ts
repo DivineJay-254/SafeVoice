@@ -1,10 +1,11 @@
 
 import { GoogleGenAI, Type, Chat } from "@google/genai";
 import { QuizQuestion, SupportCentre, GBVType } from '../types';
+import { CacheService } from './cacheService';
 
 export const GeminiService = {
   
-  // Create a new chat session with Juasafety yako context
+  // Create a new chat session with Juasafety Yako context
   createChat(): Chat | null {
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
@@ -12,32 +13,28 @@ export const GeminiService = {
         model: 'gemini-3-flash-preview',
         config: {
           tools: [{ googleSearch: {} }],
-          systemInstruction: `You are Juasafety yako AI, a highly specialized expert ONLY in Gender-Based Violence (GBV) and PSEA (Prevention of Sexual Exploitation and Abuse), specifically for the Kakuma/Kalobeyei context. 
-          
+          systemInstruction: `You are Juasafety Yako AI, an authoritative, trauma-informed expert in Gender-Based Violence (GBV), PSEA (Prevention of Sexual Exploitation and Abuse), and survivor-centered protection, grounded in UNHCR, DRC (Danish Refugee Council & DRC context), WHO Clinical Management of Rape (CMR), IASC 2015, and the Panzi Foundation 4-Pillar Model.
+
           CORE MANDATE:
           1. REFUSE any non-GBV/PSEA questions. If asked about cooking, weather, sports, etc., pivot back to GBV.
-          2. Example refusal: "I am dedicated solely to GBV and PSEA support. I cannot help with that. Is there a safety concern I can assist with?"
+          2. Example refusal: "I am dedicated solely to GBV, PSEA, and survivor protection. I cannot help with that. Is there a safety concern or GBV curriculum topic I can assist with?"
 
-          KAKUMA/KALOBEYEI REFERRALS:
+          INTERNATIONAL GUIDELINES & CLINICAL KNOWLEDGE:
+          - 72-HOUR GOLDEN MEDICAL WINDOW: In sexual assault, Post-Exposure Prophylaxis (PEP) for HIV prevention must start within 72 hours. Emergency contraception works up to 120 hours (5 days). Medical care is 100% free and confidential. Never wait for police reports to seek medical care.
+          - SURVIVOR-CENTERED PRINCIPLES: Safety, Confidentiality, Respect, and Non-Discrimination. Survivors make their own decisions; never judge, interrogate, or dictate.
+          - PANZI 4-PILLAR MODEL (Dr. Denis Mukwege, Nobel Laureate): Medical reconstruction, psychological trauma therapy, socioeconomic empowerment (VSLA), and legal justice.
+          - FORMAL JUSTICE VS MASLAH: Customary out-of-court arbitration ("Maslah") for sexual offences is strictly illegal under Section 43 of the Kenya Sexual Offences Act. Rape and defilement can never be settled with livestock.
+          - PSEA RULES (UN ST/SGB/2003/13): Zero tolerance. No exchange of food, aid, or tokens for sex. No sexual relations with anyone under 18. Mandatory reporting to UNHCR 1517 or inspector@unhcr.org.
+
+          KAKUMA/KALOBEYEI REFERRALS & HELPLINES:
           - DRC Toll-free: 0800720414
-          - UNHCR Helpline: 1517 (Also for PSEA/SEA reporting)
-          - National Hotline: 1195
-
-          PSEA CORE PRINCIPLES:
-          1. SEA is gross misconduct for staff.
-          2. NO sexual activity with anyone under 18.
-          3. NO exchange of money/aid/services for sex.
-          4. NO sexual relationships between aid workers and beneficiaries.
-          5. Mandatory reporting to 1517 or inspector@unhcr.org.
-
-          GBV KNOWLEDGE:
-          - Diversity & Inclusion: Respect for gender, ethnicity, and sexual orientation (LGBTIQ+).
-          - Rights: Safety is a human right. Services are FREE.
-          - Age of Consent: 18 years in Kenya.
+          - UNHCR Helpline: 1517 (also for PSEA reporting)
+          - National GBV Hotline (Kenya): 1195 (24/7 Toll-free)
+          - Child Helpline Kenya: 116
 
           SAFETY & CRISIS:
-          1. In immediate danger, lead with: "EMERGENCY: PLEASE CALL 1195, 1517, OR 0800720414 IMMEDIATELY."
-          2. Be trauma-informed and non-judgmental.`
+          1. In immediate physical danger, lead immediately with: "EMERGENCY: PLEASE CALL 1195, 1517, OR 0800720414 IMMEDIATELY."
+          2. Be trauma-informed: Validate the survivor, say "I believe you," emphasize that it is not their fault, and explain that help is free and confidential.`
         }
       });
     } catch (e) {
@@ -69,6 +66,9 @@ export const GeminiService = {
 
   async generateQuizForTopic(topic: string): Promise<QuizQuestion[]> {
     try {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        throw new Error('Offline');
+      }
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
@@ -90,12 +90,32 @@ export const GeminiService = {
       });
       return JSON.parse(response.text.trim());
     } catch (error) {
-      return [];
+      // Fallback offline quiz questions based on topic
+      return [
+        {
+          question: `What is the crucial time window for receiving Post-Exposure Prophylaxis (PEP) after an assault?`,
+          options: [`Within 72 hours`, `Within 7 days`, `Within 1 month`, `No time limit`],
+          correctIndex: 0
+        },
+        {
+          question: `Are GBV and protection support services free for refugees and community members in Kakuma/Kalobeyei?`,
+          options: [`Yes, 100% confidential and free`, `No, standard fee applies`, `Only for adults`, `Only with police permit`],
+          correctIndex: 0
+        },
+        {
+          question: `Which toll-free number connects you directly to DRC legal and protection aid in Kakuma?`,
+          options: [`0800720414`, `0800000000`, `911`, `100`],
+          correctIndex: 0
+        }
+      ];
     }
   },
 
   async generateSafetyPlan(inputs: any): Promise<string> {
     try {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        throw new Error('Offline');
+      }
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       const response = await ai.models.generateContent({
         model: 'gemini-3-flash-preview',
@@ -103,7 +123,8 @@ export const GeminiService = {
       });
       return response.text;
     } catch (error) {
-      return "Call 1195/1517 and prepare a small bag with your ID and essential documents.";
+      console.warn("Generating AI safety plan failed or offline, loading cached plan:", error);
+      return CacheService.getOfflineSafetyPlan(inputs?.livingSituation || 'Living with abuser', Boolean(inputs?.hasChildren));
     }
   },
 

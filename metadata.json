@@ -1,9 +1,12 @@
 {
-  "name": "Juasafety yako",
+  "name": "Juasafety Yako",
   "description": "An anonymous reporting, tracking, and education platform for Gender-Based Violence support.",
   "requestFramePermissions": [
     "camera",
     "microphone",
     "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]
 }

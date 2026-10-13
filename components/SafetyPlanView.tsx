@@ -26,12 +26,12 @@ export const SafetyPlanView: React.FC<SafetyPlanViewProps> = ({ lang }) => {
   });
 
   useEffect(() => {
-    const saved = localStorage.getItem('safevoice_sos_contact');
+    const saved = localStorage.getItem('juasafety_yako_sos_contact');
     if (saved) setSosContact(saved);
   }, []);
 
   const handleSaveContact = () => {
-    localStorage.setItem('safevoice_sos_contact', sosContact);
+    localStorage.setItem('juasafety_yako_sos_contact', sosContact);
     setContactSaved(true);
     setTimeout(() => setContactSaved(false), 2000);
   };

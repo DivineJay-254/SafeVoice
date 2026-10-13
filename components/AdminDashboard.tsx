@@ -57,7 +57,7 @@ export const AdminDashboard: React.FC<{ onLogout: () => void }> = ({ onLogout })
     <div className="flex h-screen bg-gray-100 dark:bg-gray-900 w-full overflow-hidden">
       <aside className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 hidden md:flex flex-col">
         <div className="p-6 border-b border-gray-200 flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-pink-600 flex items-center justify-center text-white font-bold">SV</div>
+            <div className="w-8 h-8 rounded-lg bg-pink-600 flex items-center justify-center text-white font-bold">JY</div>
             <h1 className="font-bold text-xl dark:text-white">Admin Portal</h1>
         </div>
         <nav className="flex-1 p-4 space-y-2">

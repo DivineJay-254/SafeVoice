@@ -18,9 +18,12 @@ export const HumanChatView: React.FC<Props> = ({ lang, onClose }) => {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const userId = useRef(localStorage.getItem('safevoice_anon_id') || 'anon_' + Math.random().toString(36).substring(7)).current;
+  const userId = useRef(localStorage.getItem('juasafety_yako_anon_id') || 'anon_' + Math.random().toString(36).substring(7)).current;
 
   useEffect(() => {
+    if (!localStorage.getItem('juasafety_yako_anon_id')) {
+        localStorage.setItem('juasafety_yako_anon_id', userId);
+    }
     const startSession = async () => {
       const id = await DatabaseService.startChatSession(userId);
       setSessionId(id);

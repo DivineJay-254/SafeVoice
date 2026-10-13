@@ -86,7 +86,12 @@ export const HotlinesView: React.FC = () => {
 
   return (
     <div className="p-4 pb-20 animate-slide-up h-full flex flex-col">
-      <h1 className="text-2xl font-bold mb-6 text-brand-700 dark:text-brand-400">Help & Support</h1>
+      <div className="flex justify-between items-center mb-4">
+        <div>
+          <h1 className="text-2xl font-bold text-brand-700 dark:text-brand-400">Help & Support</h1>
+          <p className="text-[11px] text-gray-500">Emergency Hotlines & Shelter Directory (Offline Cached)</p>
+        </div>
+      </div>
 
       <div className="flex p-1 bg-gray-200 dark:bg-gray-800 rounded-xl mb-6 shadow-inner">
         <button 

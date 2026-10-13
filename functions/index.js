@@ -1,5 +1,5 @@
 /**
- * Juasafety yako Cloud Functions
+ * Juasafety Yako Cloud Functions
  * Deploy this file using `firebase deploy --only functions`
  */
 
@@ -65,7 +65,7 @@ exports.notifyCaseworkerAssignment = functions.firestore
 
         // 1. Send Email
         const mailOptions = {
-          from: `Juasafety yako Admin <${GMAIL_EMAIL}>`,
+          from: `Juasafety Yako Admin <${GMAIL_EMAIL}>`,
           to: workerEmail,
           subject: `[New Assignment] Case #${trackingCode}`,
           html: `
@@ -80,7 +80,7 @@ exports.notifyCaseworkerAssignment = functions.firestore
             </ul>
             <p>Please log in to the admin dashboard to review the evidence and take action.</p>
             <br/>
-            <p>Juasafety yako Admin Team</p>
+            <p>Juasafety Yako Admin Team</p>
           `,
         };
 
@@ -90,7 +90,7 @@ exports.notifyCaseworkerAssignment = functions.firestore
         // 2. Send SMS (Twilio) - Uncomment to enable
         /*
         await client.messages.create({
-           body: `Juasafety yako Alert: You have been assigned Case #${trackingCode}. Type: ${newData.type}. Please check dashboard.`,
+           body: `Juasafety Yako Alert: You have been assigned Case #${trackingCode}. Type: ${newData.type}. Please check dashboard.`,
            from: TWILIO_PHONE,
            to: workerPhone
         });

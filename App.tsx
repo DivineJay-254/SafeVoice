@@ -11,9 +11,12 @@ import { AdminLogin } from './components/AdminLogin';
 import { AdminDashboard } from './components/AdminDashboard';
 import { PanicButton } from './components/PanicButton';
 import { FloatingAI } from './components/FloatingAI'; 
+import { PWAInstallButton } from './components/PWAInstallButton';
+import { useOnlineStatus } from './components/useOnlineStatus';
 import { DatabaseService } from './services/databaseService';
+import { CacheService } from './services/cacheService';
 import { getTranslation, TRANSLATIONS } from './services/translations';
-import { Home, FilePlus, BookOpen, Phone, Bell, Moon, Sun, UserCircle, Shield, LogOut, Globe, WifiOff, Settings, Languages, GraduationCap, MessageCircleHeart } from 'lucide-react';
+import { Home, FilePlus, BookOpen, Phone, Bell, Moon, Sun, UserCircle, Shield, LogOut, Globe, WifiOff, Settings, Languages, GraduationCap, MessageCircleHeart, RefreshCw, CheckCircle2, HardDriveDownload } from 'lucide-react';
 
 const App: React.FC = () => {
   const [view, setView] = useState<AppView>(AppView.HOME);
@@ -24,8 +27,30 @@ const App: React.FC = () => {
   const [notifications, setNotifications] = useState<string[]>([]);
   const [logoTaps, setLogoTaps] = useState(0);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [isRetryingConnection, setIsRetryingConnection] = useState(false);
+  const isOnline = useOnlineStatus();
 
   const t = getTranslation(lang);
+
+  const checkConnectionStatus = async () => {
+    setIsRetryingConnection(true);
+    try {
+      const result = await DatabaseService.checkConnection();
+      if (!result.success) {
+        setConnectionError(result.message || "Connection error. Cached resources active.");
+      } else {
+        setConnectionError(null);
+        // Try auto-syncing any queued offline reports
+        DatabaseService.syncOfflineReports().then(syncRes => {
+          if (syncRes.synced > 0) {
+            setNotifications(prev => [...prev, `Synced ${syncRes.synced} offline report(s) successfully`]);
+          }
+        });
+      }
+    } finally {
+      setIsRetryingConnection(false);
+    }
+  };
 
   useEffect(() => {
     if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
@@ -35,12 +60,16 @@ const App: React.FC = () => {
     if (history.length > 0) {
         setLastTrackingCode(history[0]);
     }
-    DatabaseService.checkConnection().then(result => {
-        if (!result.success) {
-            setConnectionError(result.message || "Cannot connect to server.");
-        }
-    });
+    checkConnectionStatus();
   }, []);
+
+  useEffect(() => {
+    if (!isOnline) {
+      setConnectionError("Offline mode — report templates and emergency directory are cached on device.");
+    } else if (connectionError?.includes('Offline mode')) {
+      checkConnectionStatus();
+    }
+  }, [isOnline]);
 
   useEffect(() => {
     if (darkMode) {
@@ -101,10 +130,11 @@ const App: React.FC = () => {
           <header className="flex flex-col bg-white dark:bg-gray-900 sticky top-0 z-20 border-b border-gray-100 dark:border-gray-800">
             <div className="px-4 py-3 flex justify-between items-center backdrop-blur-md">
               <div onClick={handleLogoTap} className="flex items-center gap-2 cursor-pointer select-none active:opacity-70 transition-opacity">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">SV</div>
-                <h1 className="font-bold text-lg tracking-tight text-gray-800 dark:text-white hidden sm:block">Juasafety yako</h1>
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">JY</div>
+                <h1 className="font-bold text-lg tracking-tight text-gray-800 dark:text-white hidden sm:block">Juasafety Yako</h1>
               </div>
               <div className="flex items-center gap-2">
+                <PWAInstallButton />
                 <button onClick={handleQuickExit} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center shadow-sm transition-transform active:scale-95">
                   <LogOut className="w-3 h-3 mr-1" /> {t.quick_exit}
                 </button>
@@ -139,17 +169,55 @@ const App: React.FC = () => {
 
         <main className="flex-1 overflow-y-auto no-scrollbar relative">
           {connectionError && (
-              <div className="bg-red-600 text-white text-xs p-2 text-center flex items-center justify-between font-bold sticky top-0 z-50">
-                  <div className="flex items-center gap-2"><WifiOff className="w-4 h-4" /> {connectionError}</div>
+              <div className="bg-gradient-to-r from-amber-600 via-pink-700 to-rose-700 text-white text-[11px] p-2.5 px-3 flex items-center justify-between font-bold sticky top-0 z-50 shadow-md">
+                  <div className="flex items-center gap-2 flex-1 pr-2">
+                      <WifiOff className="w-4 h-4 text-amber-200 flex-shrink-0 animate-pulse" />
+                      <span className="leading-tight font-medium">
+                        {connectionError}
+                      </span>
+                  </div>
+                  <button
+                    onClick={checkConnectionStatus}
+                    disabled={isRetryingConnection}
+                    className="bg-white/20 hover:bg-white/30 text-white text-[10px] uppercase tracking-wider px-2.5 py-1 rounded-lg font-black flex items-center gap-1 flex-shrink-0 transition active:scale-95"
+                    title="Check network and sync queued offline reports"
+                  >
+                    <RefreshCw className={`w-3 h-3 ${isRetryingConnection ? 'animate-spin' : ''}`} />
+                    Retry
+                  </button>
               </div>
           )}
 
           {view === AppView.HOME && (
             <div className="p-6 animate-fade-in pb-20">
-               <div className="mb-8">
+               <div className="mb-6">
                  <h2 className="text-3xl font-bold text-gray-800 dark:text-white mb-2">{t.welcome}</h2>
                  <p className="text-gray-500 dark:text-gray-400">{t.safe_msg}</p>
                </div>
+
+               {/* Offline Safety Cache Status Banner */}
+               <div className="mb-4 bg-gradient-to-r from-teal-50 to-emerald-50 dark:from-teal-950/30 dark:to-emerald-950/20 border border-teal-200 dark:border-teal-800/60 p-3.5 rounded-2xl flex items-center justify-between shadow-sm">
+                 <div className="flex items-center gap-2.5 pr-2">
+                   <div className="w-8 h-8 rounded-xl bg-teal-500/10 text-teal-600 dark:text-teal-400 flex items-center justify-center flex-shrink-0">
+                     <HardDriveDownload className="w-4 h-4" />
+                   </div>
+                   <div>
+                     <h4 className="text-[11px] font-black uppercase tracking-wider text-teal-900 dark:text-teal-200">
+                       Offline Cache Active
+                     </h4>
+                     <p className="text-[10px] text-teal-700 dark:text-teal-400 leading-tight">
+                       Report templates & safety resources cached for offline protection.
+                     </p>
+                   </div>
+                 </div>
+                 <button 
+                   onClick={() => setView(AppView.REPORT)}
+                   className="bg-teal-600 hover:bg-teal-700 text-white text-[10px] font-black uppercase tracking-wider px-3 py-1.5 rounded-xl shadow-sm flex-shrink-0 transition active:scale-95"
+                 >
+                   Templates
+                 </button>
+               </div>
+
                <div className="grid grid-cols-2 gap-4">
                  <button onClick={() => setView(AppView.REPORT)} className="col-span-2 bg-gradient-to-r from-brand-500 to-brand-600 text-white p-6 rounded-2xl shadow-lg shadow-brand-500/30 text-left hover:scale-[1.02] transition-transform active:scale-95">
                    <FilePlus className="w-8 h-8 mb-4 opacity-80" />
@@ -177,12 +245,25 @@ const App: React.FC = () => {
                    <h3 className="font-bold dark:text-white">{t.safety_plan}</h3>
                    <p className="text-xs text-gray-500 mt-1">{t.safety_sub}</p>
                  </button>
-                 <button onClick={() => setView(AppView.EDUCATION)} className="col-span-2 bg-indigo-600 text-white p-5 rounded-2xl shadow-lg flex items-center justify-between hover:bg-indigo-700 active:scale-95 transition-all">
-                    <div>
-                      <h3 className="font-bold text-lg">{t.edu_center}</h3>
-                      <p className="text-indigo-200 text-xs">{t.edu_sub}</p>
+                 <button onClick={() => setView(AppView.EDUCATION)} className="col-span-2 relative overflow-hidden bg-gradient-to-r from-indigo-700 via-purple-700 to-brand-600 text-white p-5 rounded-2xl shadow-lg hover:shadow-xl active:scale-95 transition-all text-left group">
+                    <div className="absolute top-0 right-0 w-36 h-full opacity-20 group-hover:opacity-30 transition-opacity pointer-events-none">
+                      <img 
+                        src="/src/assets/images/gbv_camp_protection_1791740538544.jpg" 
+                        alt="" 
+                        className="w-full h-full object-cover" 
+                        referrerPolicy="no-referrer"
+                      />
                     </div>
-                    <div className="bg-white/20 p-3 rounded-full"><GraduationCap className="w-5 h-5" /></div>
+                    <div className="relative z-10 flex items-center justify-between">
+                      <div>
+                        <div className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-wider bg-white/20 px-2.5 py-0.5 rounded-full mb-1">
+                          <span>UNHCR • DRC • WHO Standards</span>
+                        </div>
+                        <h3 className="font-bold text-lg">{t.edu_center}</h3>
+                        <p className="text-indigo-200 text-xs">{t.edu_sub}</p>
+                      </div>
+                      <div className="bg-white/20 p-3 rounded-full flex-shrink-0 ml-2"><GraduationCap className="w-5 h-5" /></div>
+                    </div>
                  </button>
                </div>
             </div>

@@ -1,6 +1,6 @@
 {
   "name": "functions",
-  "description": "Cloud Functions for Juasafety yako",
+  "description": "Cloud Functions for Juasafety Yako",
   "scripts": {
     "serve": "firebase emulators:start --only functions",
     "shell": "firebase functions:shell",

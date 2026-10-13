@@ -131,6 +131,18 @@ export const TrackView: React.FC<Props> = ({ initialCode = '' }) => {
              </div>
           </div>
 
+          {report.trackingCode.startsWith('OFFLINE-') && (
+            <div className="mb-6 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 p-3 rounded-xl text-xs flex items-start gap-2.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse mt-1 flex-shrink-0" />
+              <div>
+                <p className="font-bold text-amber-800 dark:text-amber-300">Device Offline Cache Active</p>
+                <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
+                  This report is stored securely on your device. It will automatically transmit to protection case workers once an active internet connection is available.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="relative pl-4 space-y-8 before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-0.5 before:bg-gray-200 dark:before:bg-gray-700">
             {statusOrder.map((status, idx) => {
               const isCompleted = idx <= currentStatusIndex;

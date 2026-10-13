@@ -76,16 +76,53 @@ export interface Caseworker {
 export interface EducationModule {
   id: string;
   title: string;
+  track: string;
+  level: 'Foundational' | 'Practitioner' | 'Advanced';
+  estimatedMinutes: number;
   description: string;
   content: string;
   imageUrl: string;
-  quiz?: QuizQuestion[];
+  organizationSources: string[];
+  learningObjectives: string[];
+  keyTakeaways: string[];
+  protocols?: { title: string; steps: string[] }[];
+  officialDocuments?: { title: string; publisher: string; year: string; summary: string }[];
+  scenarioCase?: {
+    title: string;
+    narrative: string;
+    dilemma: string;
+    options: { text: string; correct: boolean; explanation: string }[];
+  };
+  quiz?: (QuizQuestion & { explanation?: string })[];
+}
+
+export interface OfficialDocumentReference {
+  id: string;
+  title: string;
+  organization: 'UNHCR' | 'DRC' | 'WHO' | 'IASC' | 'UNFPA' | 'UNICEF' | 'Panzi Foundation' | 'Government of Kenya';
+  year: string;
+  category: 'Policy' | 'Clinical Guideline' | 'Legal Framework' | 'Field SOP' | 'PSEA Standards';
+  summary: string;
+  corePrinciples: string[];
+  fieldActionChecklist: string[];
+  relevanceToKakumaDRC: string;
+}
+
+export interface PocketCard {
+  id: string;
+  title: string;
+  subtitle: string;
+  organization: string;
+  urgency: 'critical' | 'standard' | 'high';
+  steps: string[];
+  goldenRule: string;
 }
 
 export interface QuizQuestion {
   question: string;
   options: string[];
   correctIndex: number;
+  explanation?: string;
 }
 
 export interface Hotline {
@@ -102,6 +139,8 @@ export interface SupportCentre {
   address: string;
   distance: string;
   type: string;
+  lat?: number;
+  lng?: number;
   mapUri?: string;
 }
 

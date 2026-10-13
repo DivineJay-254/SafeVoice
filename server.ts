@@ -5,26 +5,47 @@ import multer from "multer";
 import { v4 as uuidv4 } from "uuid";
 import path from "path";
 import fs from "fs";
-import { createServer as createViteServer } from "vite";
-import { fileURLToPath } from "url";
 import admin from "firebase-admin";
 
-// Load Firebase Config
-const firebaseConfig = JSON.parse(fs.readFileSync(path.join(process.cwd(), 'firebase-applet-config.json'), 'utf-8'));
+// Load Firebase Config safely
+let firebaseConfig: any = { projectId: 'safevoice-6df0c' };
+try {
+  const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
+  if (fs.existsSync(configPath)) {
+    firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+  }
+} catch (e) {
+  console.warn("Could not parse firebase-applet-config.json:", e);
+}
 
-// Initialize Firebase Admin
-admin.initializeApp({
-  credential: admin.credential.applicationDefault(), // This works in AI Studio Build environment
-  projectId: firebaseConfig.projectId,
-}, 'admin-app');
+// Initialize Firebase Admin safely
+let adminApp: admin.app.App;
+try {
+  const existing = admin.apps.find(a => a?.name === 'admin-app');
+  if (existing) {
+    adminApp = existing;
+  } else {
+    adminApp = admin.initializeApp({
+      credential: admin.credential.applicationDefault(),
+      projectId: firebaseConfig.projectId,
+    }, 'admin-app');
+  }
+} catch (e) {
+  console.warn("Fallback initializing Firebase Admin without applicationDefault credentials:", e);
+  const existing = admin.apps.find(a => a?.name === 'admin-app');
+  if (existing) {
+    adminApp = existing;
+  } else {
+    adminApp = admin.initializeApp({
+      projectId: firebaseConfig.projectId,
+    }, 'admin-app');
+  }
+}
 
-const db = admin.firestore(admin.app('admin-app'));
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const db = admin.firestore(adminApp);
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 // Storage paths
 const UPLOAD_DIR = path.join(process.cwd(), 'uploads');
@@ -52,7 +73,7 @@ const authenticateToken = async (req: any, res: any, next: any) => {
   
   try {
     // Verify Firebase ID Token
-    const decodedToken = await admin.auth(admin.app('admin-app')).verifyIdToken(token);
+    const decodedToken = await admin.auth(adminApp).verifyIdToken(token);
     req.user = decodedToken;
     
     // Check if user is admin (either by email or by custom claim/role in DB)
@@ -74,7 +95,7 @@ const authenticateToken = async (req: any, res: any, next: any) => {
 // --- API ROUTES ---
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'Online', server: 'Juasafety yako', time: new Date() });
+  res.json({ status: 'Online', server: 'Juasafety Yako', time: new Date() });
 });
 
 // Submit GBV Report
@@ -255,6 +276,7 @@ app.delete('/api/admin/caseworkers/:id', authenticateToken, async (req, res) => 
 // VITE MIDDLEWARE
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
@@ -263,7 +285,7 @@ async function startServer() {
   } else {
     const distPath = path.join(process.cwd(), 'dist');
     app.use(express.static(distPath));
-    app.get('*', (req, res) => {
+    app.get('*all', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
